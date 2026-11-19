@@ -1,136 +1,378 @@
-<mxfile host="app.diagrams.net" modified="2026-11-19T10:00:00.000Z" agent="RUANGAMAN Architect" version="24.0.0" type="device">
-  <diagram id="ERD-RUANGAMAN-DIAGRAM" name="ERD RUANGAMAN">
-    <mxGraphModel dx="1422" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" background="#F8FAFC" math="0" shadow="0">
-      <root>
-        <mxCell id="0" />
-        <mxCell id="1" parent="0" />
+<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1400" math="0" shadow="0" background="#F8FAFC">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
 
-        <!-- TITLE HEADER -->
-        <mxCell id="title_header" value="&lt;b&gt;RUANGAMAN — ENTITY RELATIONSHIP DIAGRAM (9 TABLES)&lt;/b&gt;&lt;br&gt;Sistem Informasi Pelaporan &amp; Pendampingan Perundungan Pendidikan" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#17324D;strokeColor=#0F9F91;strokeWidth=2;fontColor=#FFFFFF;fontSize=16;align=center;" vertex="1" parent="1">
-          <mxGeometry x="40" y="30" width="1520" height="60" as="geometry" />
-        </mxCell>
+    <!-- TITLE BANNER -->
+    <mxCell id="title" value="RUANGAMAN — ENTITY RELATIONSHIP DIAGRAM (ERD)&#xa;Platform Pelaporan &amp; Pendampingan Kasus Perundungan di Lingkungan Pendidikan" style="text;html=1;strokeColor=#17324D;fillColor=#17324D;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontColor=#FFFFFF;fontSize=16;fontStyle=1;arcSize=4;" vertex="1" parent="1">
+      <mxGeometry x="80" y="30" width="1740" height="60" as="geometry" />
+    </mxCell>
 
-        <!-- TABLE 1: ADMINS -->
-        <mxCell id="tbl_admins" value="&lt;b&gt;ADMINS&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ auth_user_id: UUID [FK, UK]&lt;br&gt;+ full_name: VARCHAR(150)&lt;br&gt;+ email: VARCHAR(255) [UK]&lt;br&gt;+ role: VARCHAR(30)&lt;br&gt;+ is_active: BOOLEAN&lt;br&gt;+ created_at: TIMESTAMPTZ&lt;br&gt;+ updated_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="60" y="140" width="260" height="180" as="geometry" />
-        </mxCell>
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- ROW 1: admins (x=400) | report_categories (x=1100)        -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
 
-        <!-- TABLE 2: REPORT_CATEGORIES -->
-        <mxCell id="tbl_categories" value="&lt;b&gt;REPORT_CATEGORIES&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ name: VARCHAR(100)&lt;br&gt;+ slug: VARCHAR(100) [UK]&lt;br&gt;+ description: TEXT&lt;br&gt;+ is_active: BOOLEAN&lt;br&gt;+ created_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="60" y="440" width="260" height="150" as="geometry" />
-        </mxCell>
+    <!-- TABLE: admins -->
+    <mxCell id="admins-hdr" value="👤 admins" style="text;html=1;strokeColor=#0B7A6F;fillColor=#0B7A6F;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="300" y="140" width="300" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="admins-r1" value="🔑 id" style="text;html=1;strokeColor=#0F9F91;fillColor=#E0F2FE;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;fontStyle=1;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="300" y="174" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="admins-r2" value="  auth_user_id" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="300" y="200" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="admins-r3" value="  full_name" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="300" y="226" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="admins-r4" value="  email" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="300" y="252" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="admins-r5" value="  role" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="300" y="278" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="admins-r6" value="  is_active" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="300" y="304" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="admins-r7" value="  created_at" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="300" y="330" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="admins-r8" value="  updated_at" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="300" y="356" width="300" height="26" as="geometry" />
+    </mxCell>
 
-        <!-- TABLE 3: REPORTS -->
-        <mxCell id="tbl_reports" value="&lt;b&gt;REPORTS&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ tracking_code: VARCHAR(32) [UK]&lt;br&gt;+ category_id: UUID [FK]&lt;br&gt;+ incident_date: DATE&lt;br&gt;+ incident_location: VARCHAR(255)&lt;br&gt;+ chronology: TEXT&lt;br&gt;+ identity_mode: VARCHAR(20)&lt;br&gt;+ reporter_name: VARCHAR(150) [NULL]&lt;br&gt;+ reporter_contact: VARCHAR(150) [NULL]&lt;br&gt;+ status: VARCHAR(30)&lt;br&gt;+ assigned_admin_id: UUID [FK, NULL]&lt;br&gt;+ privacy_acknowledged: BOOLEAN&lt;br&gt;+ created_at: TIMESTAMPTZ&lt;br&gt;+ updated_at: TIMESTAMPTZ&lt;br&gt;+ resolved_at: TIMESTAMPTZ [NULL]" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#CCFBF1;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="460" y="240" width="310" height="290" as="geometry" />
-        </mxCell>
+    <!-- TABLE: report_categories -->
+    <mxCell id="rcat-hdr" value="🏷️ report_categories" style="text;html=1;strokeColor=#0B7A6F;fillColor=#0B7A6F;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="140" width="300" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="rcat-r1" value="🔑 id" style="text;html=1;strokeColor=#0F9F91;fillColor=#E0F2FE;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;fontStyle=1;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="174" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rcat-r2" value="  name" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="200" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rcat-r3" value="  slug" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="226" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rcat-r4" value="  description" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="252" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rcat-r5" value="  is_active" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="278" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rcat-r6" value="  created_at" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="304" width="300" height="26" as="geometry" />
+    </mxCell>
 
-        <!-- TABLE 4: REPORT_EVIDENCES -->
-        <mxCell id="tbl_evidences" value="&lt;b&gt;REPORT_EVIDENCES&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ report_id: UUID [FK]&lt;br&gt;+ storage_path: VARCHAR(255)&lt;br&gt;+ original_filename: VARCHAR(255)&lt;br&gt;+ mime_type: VARCHAR(100)&lt;br&gt;+ file_size_bytes: BIGINT&lt;br&gt;+ uploaded_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="910" y="140" width="270" height="170" as="geometry" />
-        </mxCell>
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- ROW 2: reports (CENTER — wide, x=640)                     -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
 
-        <!-- TABLE 5: REPORT_STATUS_HISTORIES -->
-        <mxCell id="tbl_histories" value="&lt;b&gt;REPORT_STATUS_HISTORIES&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ report_id: UUID [FK]&lt;br&gt;+ changed_by_admin_id: UUID [FK, NULL]&lt;br&gt;+ previous_status: VARCHAR(30) [NULL]&lt;br&gt;+ new_status: VARCHAR(30)&lt;br&gt;+ public_message: TEXT [NULL]&lt;br&gt;+ internal_note: TEXT [NULL]&lt;br&gt;+ created_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="910" y="380" width="290" height="190" as="geometry" />
-        </mxCell>
+    <!-- TABLE: reports (CENTER / PUSAT) -->
+    <mxCell id="reports-hdr" value="📋 reports  ★ TABEL UTAMA" style="text;html=1;strokeColor=#17324D;fillColor=#17324D;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="640" y="480" width="420" height="36" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r1" value="🔑 id" style="text;html=1;strokeColor=#17324D;fillColor=#E0F2FE;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;fontStyle=1;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="516" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r2" value="  tracking_code" style="text;html=1;strokeColor=#17324D;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="542" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r3" value="🔗 category_id → report_categories.id" style="text;html=1;strokeColor=#17324D;fillColor=#FEF3C7;align=left;verticalAlign=middle;fontColor=#92400E;fontSize=11;fontStyle=2;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="568" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r4" value="  incident_date" style="text;html=1;strokeColor=#17324D;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="594" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r5" value="  incident_location" style="text;html=1;strokeColor=#17324D;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="620" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r6" value="  chronology" style="text;html=1;strokeColor=#17324D;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="646" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r7" value="  identity_mode  (anonymous / identified)" style="text;html=1;strokeColor=#17324D;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="672" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r8" value="  reporter_name" style="text;html=1;strokeColor=#17324D;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="698" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r9" value="  reporter_contact" style="text;html=1;strokeColor=#17324D;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="724" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r10" value="  status  (pending / reviewed / resolved)" style="text;html=1;strokeColor=#17324D;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="750" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r11" value="🔗 assigned_admin_id → admins.id" style="text;html=1;strokeColor=#17324D;fillColor=#FEF3C7;align=left;verticalAlign=middle;fontColor=#92400E;fontSize=11;fontStyle=2;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="776" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r12" value="  privacy_acknowledged" style="text;html=1;strokeColor=#17324D;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="802" width="420" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="reports-r13" value="  created_at / updated_at / resolved_at" style="text;html=1;strokeColor=#17324D;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="640" y="828" width="420" height="26" as="geometry" />
+    </mxCell>
 
-        <!-- TABLE 6: EDUCATION_MATERIALS -->
-        <mxCell id="tbl_education" value="&lt;b&gt;EDUCATION_MATERIALS&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ title: VARCHAR(200)&lt;br&gt;+ slug: VARCHAR(200) [UK]&lt;br&gt;+ category: VARCHAR(50)&lt;br&gt;+ summary: TEXT&lt;br&gt;+ content: TEXT&lt;br&gt;+ media_url: VARCHAR(255) [NULL]&lt;br&gt;+ cover_path: VARCHAR(255) [NULL]&lt;br&gt;+ reading_minutes: INTEGER&lt;br&gt;+ is_published: BOOLEAN&lt;br&gt;+ created_by_admin_id: UUID [FK, NULL]&lt;br&gt;+ created_at: TIMESTAMPTZ&lt;br&gt;+ updated_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="60" y="680" width="310" height="260" as="geometry" />
-        </mxCell>
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- ROW 3: report_evidences (x=200) | report_status_histories (x=1100) -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
 
-        <!-- TABLE 7: SUPPORT_RESOURCES -->
-        <mxCell id="tbl_resources" value="&lt;b&gt;SUPPORT_RESOURCES (Standalone)&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ title: VARCHAR(150)&lt;br&gt;+ resource_type: VARCHAR(50)&lt;br&gt;+ description: TEXT&lt;br&gt;+ contact_name: VARCHAR(150) [NULL]&lt;br&gt;+ phone: VARCHAR(50) [NULL]&lt;br&gt;+ website_url: VARCHAR(255) [NULL]&lt;br&gt;+ operating_hours: VARCHAR(100) [NULL]&lt;br&gt;+ location: VARCHAR(255) [NULL]&lt;br&gt;+ is_published: BOOLEAN&lt;br&gt;+ created_at: TIMESTAMPTZ&lt;br&gt;+ updated_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#FFFFFF;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="1270" y="140" width="280" height="260" as="geometry" />
-        </mxCell>
+    <!-- TABLE: report_evidences -->
+    <mxCell id="revid-hdr" value="📎 report_evidences" style="text;html=1;strokeColor=#0F9F91;fillColor=#0F9F91;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="980" width="320" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="revid-r1" value="🔑 id" style="text;html=1;strokeColor=#0F9F91;fillColor=#E0F2FE;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;fontStyle=1;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1014" width="320" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="revid-r2" value="🔗 report_id → reports.id (CASCADE)" style="text;html=1;strokeColor=#0F9F91;fillColor=#FEF3C7;align=left;verticalAlign=middle;fontColor=#92400E;fontSize=11;fontStyle=2;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1040" width="320" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="revid-r3" value="  storage_path" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1066" width="320" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="revid-r4" value="  original_filename" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1092" width="320" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="revid-r5" value="  mime_type" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1118" width="320" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="revid-r6" value="  file_size_bytes" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1144" width="320" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="revid-r7" value="  uploaded_at" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1170" width="320" height="26" as="geometry" />
+    </mxCell>
 
-        <!-- TABLE 8: COUNSELING_SLOTS -->
-        <mxCell id="tbl_slots" value="&lt;b&gt;COUNSELING_SLOTS&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ counselor_admin_id: UUID [FK]&lt;br&gt;+ start_at: TIMESTAMPTZ&lt;br&gt;+ end_at: TIMESTAMPTZ&lt;br&gt;+ session_mode: VARCHAR(20)&lt;br&gt;+ location: VARCHAR(255) [NULL]&lt;br&gt;+ meeting_link: VARCHAR(255) [NULL]&lt;br&gt;+ capacity: INTEGER&lt;br&gt;+ is_published: BOOLEAN&lt;br&gt;+ status: VARCHAR(20)&lt;br&gt;+ created_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="500" y="680" width="280" height="230" as="geometry" />
-        </mxCell>
+    <!-- TABLE: report_status_histories -->
+    <mxCell id="rsh-hdr" value="🕒 report_status_histories" style="text;html=1;strokeColor=#0F9F91;fillColor=#0F9F91;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="980" width="360" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="rsh-r1" value="🔑 id" style="text;html=1;strokeColor=#0F9F91;fillColor=#E0F2FE;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;fontStyle=1;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="1014" width="360" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rsh-r2" value="🔗 report_id → reports.id (CASCADE)" style="text;html=1;strokeColor=#0F9F91;fillColor=#FEF3C7;align=left;verticalAlign=middle;fontColor=#92400E;fontSize=11;fontStyle=2;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="1040" width="360" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rsh-r3" value="🔗 changed_by_admin_id → admins.id (SET NULL)" style="text;html=1;strokeColor=#0F9F91;fillColor=#FEF3C7;align=left;verticalAlign=middle;fontColor=#92400E;fontSize=11;fontStyle=2;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="1066" width="360" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rsh-r4" value="  previous_status" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="1092" width="360" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rsh-r5" value="  new_status" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="1118" width="360" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rsh-r6" value="  public_message" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="1144" width="360" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rsh-r7" value="  internal_note" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="1170" width="360" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="rsh-r8" value="  created_at" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="1196" width="360" height="26" as="geometry" />
+    </mxCell>
 
-        <!-- TABLE 9: COUNSELING_BOOKINGS -->
-        <mxCell id="tbl_bookings" value="&lt;b&gt;COUNSELING_BOOKINGS&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ slot_id: UUID [FK]&lt;br&gt;+ booking_code: VARCHAR(32) [UK]&lt;br&gt;+ student_name: VARCHAR(150)&lt;br&gt;+ contact_method: VARCHAR(30)&lt;br&gt;+ contact_value: VARCHAR(150)&lt;br&gt;+ booking_status: VARCHAR(20)&lt;br&gt;+ privacy_acknowledged: BOOLEAN&lt;br&gt;+ created_at: TIMESTAMPTZ&lt;br&gt;+ updated_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#CCFBF1;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="910" y="680" width="290" height="220" as="geometry" />
-        </mxCell>
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- ROW 4: education_materials | counseling_slots | support_resources -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
 
-        <!-- RELATIONSHIPS -->
-        <!-- Rel 1: ADMINS 1:N REPORTS -->
-        <mxCell id="rel_admins_reports" edge="1" parent="1" source="tbl_admins" target="tbl_reports" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=2;exitX=1;exitY=0.6;entryX=0;entryY=0.3;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="lbl_rel_1" value="assigned to (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_admins_reports">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
+    <!-- TABLE: education_materials -->
+    <mxCell id="edmat-hdr" value="📚 education_materials" style="text;html=1;strokeColor=#0B7A6F;fillColor=#0B7A6F;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1310" width="340" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="edmat-r1" value="🔑 id" style="text;html=1;strokeColor=#0F9F91;fillColor=#E0F2FE;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;fontStyle=1;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1344" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="edmat-r2" value="  title" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1370" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="edmat-r3" value="  slug" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1396" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="edmat-r4" value="  category" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1422" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="edmat-r5" value="  summary / content" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1448" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="edmat-r6" value="  media_url / cover_path" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1474" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="edmat-r7" value="  reading_minutes" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1500" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="edmat-r8" value="  is_published" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1526" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="edmat-r9" value="🔗 created_by_admin_id → admins.id (SET NULL)" style="text;html=1;strokeColor=#0F9F91;fillColor=#FEF3C7;align=left;verticalAlign=middle;fontColor=#92400E;fontSize=11;fontStyle=2;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1552" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="edmat-r10" value="  created_at / updated_at" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1578" width="340" height="26" as="geometry" />
+    </mxCell>
 
-        <!-- Rel 2: REPORT_CATEGORIES 1:N REPORTS -->
-        <mxCell id="rel_categories_reports" edge="1" parent="1" source="tbl_categories" target="tbl_reports" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=2;exitX=1;exitY=0.3;entryX=0;entryY=0.7;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="lbl_rel_2" value="categorizes (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_categories_reports">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
+    <!-- TABLE: counseling_slots -->
+    <mxCell id="cslot-hdr" value="📅 counseling_slots" style="text;html=1;strokeColor=#0B7A6F;fillColor=#0B7A6F;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1310" width="300" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="cslot-r1" value="🔑 id" style="text;html=1;strokeColor=#0F9F91;fillColor=#E0F2FE;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;fontStyle=1;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1344" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cslot-r2" value="🔗 counselor_admin_id → admins.id (RESTRICT)" style="text;html=1;strokeColor=#0F9F91;fillColor=#FEF3C7;align=left;verticalAlign=middle;fontColor=#92400E;fontSize=11;fontStyle=2;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1370" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cslot-r3" value="  start_at / end_at" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1396" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cslot-r4" value="  session_mode" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1422" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cslot-r5" value="  location / meeting_link" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1448" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cslot-r6" value="  capacity" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1474" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cslot-r7" value="  is_published / status" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1500" width="300" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cslot-r8" value="  created_at" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1526" width="300" height="26" as="geometry" />
+    </mxCell>
 
-        <!-- Rel 3: REPORTS 1:N REPORT_EVIDENCES -->
-        <mxCell id="rel_reports_evidences" edge="1" parent="1" source="tbl_reports" target="tbl_evidences" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=2;exitX=1;exitY=0.2;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="lbl_rel_3" value="has attachments (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_reports_evidences">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
+    <!-- TABLE: support_resources (STANDALONE — no FK) -->
+    <mxCell id="sres-hdr" value="🤝 support_resources  (standalone)" style="text;html=1;strokeColor=#0B7A6F;fillColor=#0B7A6F;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1200" y="1310" width="340" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="sres-r1" value="🔑 id" style="text;html=1;strokeColor=#0F9F91;fillColor=#E0F2FE;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;fontStyle=1;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1200" y="1344" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="sres-r2" value="  title" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1200" y="1370" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="sres-r3" value="  resource_type" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1200" y="1396" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="sres-r4" value="  description" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1200" y="1422" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="sres-r5" value="  contact_name / phone" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1200" y="1448" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="sres-r6" value="  website_url / operating_hours" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1200" y="1474" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="sres-r7" value="  location / is_published" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1200" y="1500" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="sres-r8" value="  created_at / updated_at" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="1200" y="1526" width="340" height="26" as="geometry" />
+    </mxCell>
 
-        <!-- Rel 4: REPORTS 1:N REPORT_STATUS_HISTORIES -->
-        <mxCell id="rel_reports_histories" edge="1" parent="1" source="tbl_reports" target="tbl_histories" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=2;exitX=1;exitY=0.6;entryX=0;entryY=0.4;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="lbl_rel_4" value="tracks progression (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_reports_histories">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- ROW 5: counseling_bookings (x=700)                         -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
 
-        <!-- Rel 5: ADMINS 1:N REPORT_STATUS_HISTORIES -->
-        <mxCell id="rel_admins_histories" edge="1" parent="1" source="tbl_admins" target="tbl_histories" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=1.5;dashed=1;exitX=0.8;exitY=1;entryX=0.5;entryY=0;">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="268" y="350" />
-              <mxPoint x="1055" y="350" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="lbl_rel_5" value="changed by (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_admins_histories">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
+    <!-- TABLE: counseling_bookings -->
+    <mxCell id="cbook-hdr" value="🗓️ counseling_bookings" style="text;html=1;strokeColor=#0F9F91;fillColor=#0F9F91;align=center;verticalAlign=middle;fontColor=#FFFFFF;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1700" width="340" height="34" as="geometry" />
+    </mxCell>
+    <mxCell id="cbook-r1" value="🔑 id" style="text;html=1;strokeColor=#0F9F91;fillColor=#E0F2FE;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;fontStyle=1;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1734" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cbook-r2" value="🔗 slot_id → counseling_slots.id (CASCADE)" style="text;html=1;strokeColor=#0F9F91;fillColor=#FEF3C7;align=left;verticalAlign=middle;fontColor=#92400E;fontSize=11;fontStyle=2;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1760" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cbook-r3" value="  booking_code" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1786" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cbook-r4" value="  student_name" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1812" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cbook-r5" value="  contact_method / contact_value" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1838" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cbook-r6" value="  booking_status" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1864" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cbook-r7" value="  privacy_acknowledged" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1890" width="340" height="26" as="geometry" />
+    </mxCell>
+    <mxCell id="cbook-r8" value="  created_at / updated_at" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=8;" vertex="1" parent="1">
+      <mxGeometry x="700" y="1916" width="340" height="26" as="geometry" />
+    </mxCell>
 
-        <!-- Rel 6: ADMINS 1:N EDUCATION_MATERIALS -->
-        <mxCell id="rel_admins_education" edge="1" parent="1" source="tbl_admins" target="tbl_education" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=1.5;exitX=0.3;exitY=1;entryX=0.3;entryY=0;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="lbl_rel_6" value="authored by (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_admins_education">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- RELATIONS / CONNECTIONS                                     -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
 
-        <!-- Rel 7: ADMINS 1:N COUNSELING_SLOTS -->
-        <mxCell id="rel_admins_slots" edge="1" parent="1" source="tbl_admins" target="tbl_slots" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=1.5;exitX=0.5;exitY=1;entryX=0.2;entryY=0;">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="190" y="640" />
-              <mxPoint x="556" y="640" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="lbl_rel_7" value="hosted by (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_admins_slots">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
+    <!-- 1. admins 1:N reports (assigned_admin_id) -->
+    <mxCell id="rel1" value="1 : N&#xa;assigned_to" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#17324D;strokeWidth=2;fontColor=#0F9F91;fontSize=10;fontStyle=1;endArrow=ERmany;endFill=1;startArrow=ERone;startFill=0;" edge="1" parent="1" source="admins-r1" target="reports-r11">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
 
-        <!-- Rel 8: COUNSELING_SLOTS 1:N COUNSELING_BOOKINGS -->
-        <mxCell id="rel_slots_bookings" edge="1" parent="1" source="tbl_slots" target="tbl_bookings" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="lbl_rel_8" value="booked by (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_slots_bookings">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
+    <!-- 2. report_categories 1:N reports (category_id) -->
+    <mxCell id="rel2" value="1 : N&#xa;categorizes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#17324D;strokeWidth=2;fontColor=#0F9F91;fontSize=10;fontStyle=1;endArrow=ERmany;endFill=1;startArrow=ERone;startFill=0;" edge="1" parent="1" source="rcat-r1" target="reports-r3">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
 
-      </root>
-    </mxGraphModel>
-  </diagram>
-</mxfile>
+    <!-- 3. reports 1:N report_evidences (CASCADE) -->
+    <mxCell id="rel3" value="1 : N&#xa;has attachments&#xa;(CASCADE)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#0F9F91;strokeWidth=2;fontColor=#0F9F91;fontSize=10;fontStyle=1;endArrow=ERmany;endFill=1;startArrow=ERone;startFill=0;" edge="1" parent="1" source="reports-r1" target="revid-r2">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- 4. reports 1:N report_status_histories (CASCADE) -->
+    <mxCell id="rel4" value="1 : N&#xa;tracks status&#xa;(CASCADE)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#0F9F91;strokeWidth=2;fontColor=#0F9F91;fontSize=10;fontStyle=1;endArrow=ERmany;endFill=1;startArrow=ERone;startFill=0;" edge="1" parent="1" source="reports-r1" target="rsh-r2">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- 5. admins 1:N report_status_histories (changed_by) SET NULL -->
+    <mxCell id="rel5" value="1 : N&#xa;changed_by&#xa;(SET NULL)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;strokeColor=#6B7280;strokeWidth=1.5;dashed=1;fontColor=#6B7280;fontSize=10;fontStyle=0;endArrow=ERmany;endFill=1;startArrow=ERone;startFill=0;" edge="1" parent="1" source="admins-r1" target="rsh-r3">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- 6. admins 1:N education_materials (created_by) SET NULL -->
+    <mxCell id="rel6" value="1 : N&#xa;authored_by&#xa;(SET NULL)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;strokeColor=#6B7280;strokeWidth=1.5;dashed=1;fontColor=#6B7280;fontSize=10;fontStyle=0;endArrow=ERmany;endFill=1;startArrow=ERone;startFill=0;" edge="1" parent="1" source="admins-r1" target="edmat-r9">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- 7. admins 1:N counseling_slots (counselor_admin_id) RESTRICT -->
+    <mxCell id="rel7" value="1 : N&#xa;hosted_by&#xa;(RESTRICT)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;strokeColor=#17324D;strokeWidth=2;fontColor=#0F9F91;fontSize=10;fontStyle=1;endArrow=ERmany;endFill=1;startArrow=ERone;startFill=0;" edge="1" parent="1" source="admins-r1" target="cslot-r2">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- 8. counseling_slots 1:N counseling_bookings (CASCADE) -->
+    <mxCell id="rel8" value="1 : N&#xa;booked_in&#xa;(CASCADE)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#0F9F91;strokeWidth=2;fontColor=#0F9F91;fontSize=10;fontStyle=1;endArrow=ERmany;endFill=1;startArrow=ERone;startFill=0;" edge="1" parent="1" source="cslot-r1" target="cbook-r2">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+
+    <!-- LEGEND BOX -->
+    <mxCell id="legend-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0FDF4;strokeColor=#0F9F91;strokeWidth=2;" vertex="1" parent="1">
+      <mxGeometry x="1580" y="980" width="240" height="260" as="geometry" />
+    </mxCell>
+    <mxCell id="legend-title" value="LEGENDA" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontColor=#17324D;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="1580" y="985" width="240" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="leg1" value="🔑  Primary Key (PK)" style="text;html=1;strokeColor=#0F9F91;fillColor=#E0F2FE;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;fontStyle=1;spacingLeft=6;" vertex="1" parent="1">
+      <mxGeometry x="1590" y="1020" width="220" height="28" as="geometry" />
+    </mxCell>
+    <mxCell id="leg2" value="🔗  Foreign Key (FK)" style="text;html=1;strokeColor=#0F9F91;fillColor=#FEF3C7;align=left;verticalAlign=middle;fontColor=#92400E;fontSize=11;fontStyle=2;spacingLeft=6;" vertex="1" parent="1">
+      <mxGeometry x="1590" y="1052" width="220" height="28" as="geometry" />
+    </mxCell>
+    <mxCell id="leg3" value="  Regular Column" style="text;html=1;strokeColor=#0F9F91;fillColor=#FFFFFF;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=6;" vertex="1" parent="1">
+      <mxGeometry x="1590" y="1084" width="220" height="28" as="geometry" />
+    </mxCell>
+    <mxCell id="leg4" value="━━  Mandatory Relation (1:N)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;spacingLeft=6;" vertex="1" parent="1">
+      <mxGeometry x="1590" y="1116" width="220" height="28" as="geometry" />
+    </mxCell>
+    <mxCell id="leg5" value="╌╌  Optional Relation (SET NULL)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontColor=#6B7280;fontSize=11;spacingLeft=6;" vertex="1" parent="1">
+      <mxGeometry x="1590" y="1148" width="220" height="28" as="geometry" />
+    </mxCell>
+    <mxCell id="leg6" value="★ = Tabel Pusat Sistem" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontColor=#17324D;fontSize=11;fontStyle=1;spacingLeft=6;" vertex="1" parent="1">
+      <mxGeometry x="1590" y="1180" width="220" height="28" as="geometry" />
+    </mxCell>
+    <mxCell id="leg7" value="Versi: Minggu 2 (Mock Repository)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontColor=#6B7280;fontSize=10;fontStyle=0;" vertex="1" parent="1">
+      <mxGeometry x="1590" y="1210" width="220" height="24" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>
