@@ -1,0 +1,136 @@
+<mxfile host="app.diagrams.net" modified="2026-11-19T10:00:00.000Z" agent="RUANGAMAN Architect" version="24.0.0" type="device">
+  <diagram id="ERD-RUANGAMAN-DIAGRAM" name="ERD RUANGAMAN">
+    <mxGraphModel dx="1422" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" background="#F8FAFC" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- TITLE HEADER -->
+        <mxCell id="title_header" value="&lt;b&gt;RUANGAMAN — ENTITY RELATIONSHIP DIAGRAM (9 TABLES)&lt;/b&gt;&lt;br&gt;Sistem Informasi Pelaporan &amp; Pendampingan Perundungan Pendidikan" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#17324D;strokeColor=#0F9F91;strokeWidth=2;fontColor=#FFFFFF;fontSize=16;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="30" width="1520" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- TABLE 1: ADMINS -->
+        <mxCell id="tbl_admins" value="&lt;b&gt;ADMINS&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ auth_user_id: UUID [FK, UK]&lt;br&gt;+ full_name: VARCHAR(150)&lt;br&gt;+ email: VARCHAR(255) [UK]&lt;br&gt;+ role: VARCHAR(30)&lt;br&gt;+ is_active: BOOLEAN&lt;br&gt;+ created_at: TIMESTAMPTZ&lt;br&gt;+ updated_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="140" width="260" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- TABLE 2: REPORT_CATEGORIES -->
+        <mxCell id="tbl_categories" value="&lt;b&gt;REPORT_CATEGORIES&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ name: VARCHAR(100)&lt;br&gt;+ slug: VARCHAR(100) [UK]&lt;br&gt;+ description: TEXT&lt;br&gt;+ is_active: BOOLEAN&lt;br&gt;+ created_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="440" width="260" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- TABLE 3: REPORTS -->
+        <mxCell id="tbl_reports" value="&lt;b&gt;REPORTS&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ tracking_code: VARCHAR(32) [UK]&lt;br&gt;+ category_id: UUID [FK]&lt;br&gt;+ incident_date: DATE&lt;br&gt;+ incident_location: VARCHAR(255)&lt;br&gt;+ chronology: TEXT&lt;br&gt;+ identity_mode: VARCHAR(20)&lt;br&gt;+ reporter_name: VARCHAR(150) [NULL]&lt;br&gt;+ reporter_contact: VARCHAR(150) [NULL]&lt;br&gt;+ status: VARCHAR(30)&lt;br&gt;+ assigned_admin_id: UUID [FK, NULL]&lt;br&gt;+ privacy_acknowledged: BOOLEAN&lt;br&gt;+ created_at: TIMESTAMPTZ&lt;br&gt;+ updated_at: TIMESTAMPTZ&lt;br&gt;+ resolved_at: TIMESTAMPTZ [NULL]" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#CCFBF1;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="240" width="310" height="290" as="geometry" />
+        </mxCell>
+
+        <!-- TABLE 4: REPORT_EVIDENCES -->
+        <mxCell id="tbl_evidences" value="&lt;b&gt;REPORT_EVIDENCES&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ report_id: UUID [FK]&lt;br&gt;+ storage_path: VARCHAR(255)&lt;br&gt;+ original_filename: VARCHAR(255)&lt;br&gt;+ mime_type: VARCHAR(100)&lt;br&gt;+ file_size_bytes: BIGINT&lt;br&gt;+ uploaded_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="910" y="140" width="270" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- TABLE 5: REPORT_STATUS_HISTORIES -->
+        <mxCell id="tbl_histories" value="&lt;b&gt;REPORT_STATUS_HISTORIES&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ report_id: UUID [FK]&lt;br&gt;+ changed_by_admin_id: UUID [FK, NULL]&lt;br&gt;+ previous_status: VARCHAR(30) [NULL]&lt;br&gt;+ new_status: VARCHAR(30)&lt;br&gt;+ public_message: TEXT [NULL]&lt;br&gt;+ internal_note: TEXT [NULL]&lt;br&gt;+ created_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="910" y="380" width="290" height="190" as="geometry" />
+        </mxCell>
+
+        <!-- TABLE 6: EDUCATION_MATERIALS -->
+        <mxCell id="tbl_education" value="&lt;b&gt;EDUCATION_MATERIALS&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ title: VARCHAR(200)&lt;br&gt;+ slug: VARCHAR(200) [UK]&lt;br&gt;+ category: VARCHAR(50)&lt;br&gt;+ summary: TEXT&lt;br&gt;+ content: TEXT&lt;br&gt;+ media_url: VARCHAR(255) [NULL]&lt;br&gt;+ cover_path: VARCHAR(255) [NULL]&lt;br&gt;+ reading_minutes: INTEGER&lt;br&gt;+ is_published: BOOLEAN&lt;br&gt;+ created_by_admin_id: UUID [FK, NULL]&lt;br&gt;+ created_at: TIMESTAMPTZ&lt;br&gt;+ updated_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="680" width="310" height="260" as="geometry" />
+        </mxCell>
+
+        <!-- TABLE 7: SUPPORT_RESOURCES -->
+        <mxCell id="tbl_resources" value="&lt;b&gt;SUPPORT_RESOURCES (Standalone)&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ title: VARCHAR(150)&lt;br&gt;+ resource_type: VARCHAR(50)&lt;br&gt;+ description: TEXT&lt;br&gt;+ contact_name: VARCHAR(150) [NULL]&lt;br&gt;+ phone: VARCHAR(50) [NULL]&lt;br&gt;+ website_url: VARCHAR(255) [NULL]&lt;br&gt;+ operating_hours: VARCHAR(100) [NULL]&lt;br&gt;+ location: VARCHAR(255) [NULL]&lt;br&gt;+ is_published: BOOLEAN&lt;br&gt;+ created_at: TIMESTAMPTZ&lt;br&gt;+ updated_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#FFFFFF;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1270" y="140" width="280" height="260" as="geometry" />
+        </mxCell>
+
+        <!-- TABLE 8: COUNSELING_SLOTS -->
+        <mxCell id="tbl_slots" value="&lt;b&gt;COUNSELING_SLOTS&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ counselor_admin_id: UUID [FK]&lt;br&gt;+ start_at: TIMESTAMPTZ&lt;br&gt;+ end_at: TIMESTAMPTZ&lt;br&gt;+ session_mode: VARCHAR(20)&lt;br&gt;+ location: VARCHAR(255) [NULL]&lt;br&gt;+ meeting_link: VARCHAR(255) [NULL]&lt;br&gt;+ capacity: INTEGER&lt;br&gt;+ is_published: BOOLEAN&lt;br&gt;+ status: VARCHAR(20)&lt;br&gt;+ created_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#E0F2FE;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="680" width="280" height="230" as="geometry" />
+        </mxCell>
+
+        <!-- TABLE 9: COUNSELING_BOOKINGS -->
+        <mxCell id="tbl_bookings" value="&lt;b&gt;COUNSELING_BOOKINGS&lt;/b&gt;&lt;hr&gt;+ id: UUID [PK]&lt;br&gt;+ slot_id: UUID [FK]&lt;br&gt;+ booking_code: VARCHAR(32) [UK]&lt;br&gt;+ student_name: VARCHAR(150)&lt;br&gt;+ contact_method: VARCHAR(30)&lt;br&gt;+ contact_value: VARCHAR(150)&lt;br&gt;+ booking_status: VARCHAR(20)&lt;br&gt;+ privacy_acknowledged: BOOLEAN&lt;br&gt;+ created_at: TIMESTAMPTZ&lt;br&gt;+ updated_at: TIMESTAMPTZ" style="swimlane;fontStyle=0;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#CCFBF1;strokeColor=#0F9F91;fontColor=#17324D;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="910" y="680" width="290" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- RELATIONSHIPS -->
+        <!-- Rel 1: ADMINS 1:N REPORTS -->
+        <mxCell id="rel_admins_reports" edge="1" parent="1" source="tbl_admins" target="tbl_reports" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=2;exitX=1;exitY=0.6;entryX=0;entryY=0.3;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_rel_1" value="assigned to (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_admins_reports">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Rel 2: REPORT_CATEGORIES 1:N REPORTS -->
+        <mxCell id="rel_categories_reports" edge="1" parent="1" source="tbl_categories" target="tbl_reports" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=2;exitX=1;exitY=0.3;entryX=0;entryY=0.7;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_rel_2" value="categorizes (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_categories_reports">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Rel 3: REPORTS 1:N REPORT_EVIDENCES -->
+        <mxCell id="rel_reports_evidences" edge="1" parent="1" source="tbl_reports" target="tbl_evidences" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=2;exitX=1;exitY=0.2;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_rel_3" value="has attachments (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_reports_evidences">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Rel 4: REPORTS 1:N REPORT_STATUS_HISTORIES -->
+        <mxCell id="rel_reports_histories" edge="1" parent="1" source="tbl_reports" target="tbl_histories" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=2;exitX=1;exitY=0.6;entryX=0;entryY=0.4;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_rel_4" value="tracks progression (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_reports_histories">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Rel 5: ADMINS 1:N REPORT_STATUS_HISTORIES -->
+        <mxCell id="rel_admins_histories" edge="1" parent="1" source="tbl_admins" target="tbl_histories" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=1.5;dashed=1;exitX=0.8;exitY=1;entryX=0.5;entryY=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="268" y="350" />
+              <mxPoint x="1055" y="350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lbl_rel_5" value="changed by (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_admins_histories">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Rel 6: ADMINS 1:N EDUCATION_MATERIALS -->
+        <mxCell id="rel_admins_education" edge="1" parent="1" source="tbl_admins" target="tbl_education" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=1.5;exitX=0.3;exitY=1;entryX=0.3;entryY=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_rel_6" value="authored by (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_admins_education">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Rel 7: ADMINS 1:N COUNSELING_SLOTS -->
+        <mxCell id="rel_admins_slots" edge="1" parent="1" source="tbl_admins" target="tbl_slots" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=1.5;exitX=0.5;exitY=1;entryX=0.2;entryY=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="190" y="640" />
+              <mxPoint x="556" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lbl_rel_7" value="hosted by (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_admins_slots">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Rel 8: COUNSELING_SLOTS 1:N COUNSELING_BOOKINGS -->
+        <mxCell id="rel_slots_bookings" edge="1" parent="1" source="tbl_slots" target="tbl_bookings" style="endArrow=ERmany;startArrow=ERone;strokeColor=#0F9F91;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lbl_rel_8" value="booked by (1:N)" style="edgeLabel;resizable=0;html=1;align=center;verticalAlign=middle;fontSize=10;fontColor=#17324D;" connectable="0" vertex="1" parent="rel_slots_bookings">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
