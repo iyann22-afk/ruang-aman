@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%" fill="none">
+  <defs>
+    <!-- Background Gradient for subtle depth -->
+    <linearGradient id="shieldGrad" x1="15%" y1="10%" x2="85%" y2="90%">
+      <stop offset="0%" stop-color="#0F9F91" />
+      <stop offset="50%" stop-color="#0B7A6F" />
+      <stop offset="100%" stop-color="#17324D" />
+    </linearGradient>
+
+    <!-- Inner Soft Aura -->
+    <linearGradient id="auraGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#CCFBF1" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#E0F2FE" stop-opacity="0.3" />
+    </linearGradient>
+
+    <!-- Leaf / Sprout Gradient -->
+    <linearGradient id="sproutGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#0F9F91" />
+    </linearGradient>
+
+    <!-- Soft Drop Shadow -->
+    <filter id="logoShadow" x="-10%" y="-10%" width="130%" height="130%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#17324D" flood-opacity="0.18" />
+    </filter>
+  </defs>
+
+  <!-- Outer Protective Shield with Gentle Curves -->
+  <path d="M100 18 C145 18, 172 32, 172 48 C172 118, 138 162, 100 182 C62 162, 28 118, 28 48 C28 32, 55 18, 100 18 Z"
+        fill="url(#shieldGrad)"
+        filter="url(#logoShadow)" />
+
+  <!-- Inner Soft Sanctuary Chamber (Ruang Aman) -->
+  <path d="M100 30 C136 30, 158 41, 158 54 C158 110, 130 146, 100 163 C70 146, 42 110, 42 54 C42 41, 64 30, 100 30 Z"
+        fill="url(#auraGrad)"
+        opacity="0.25" />
+
+  <!-- Left Caring Hand / Protective Wing -->
+  <path d="M60 88 C58 112, 74 134, 100 148 C90 128, 86 108, 88 84 C89 74, 85 64, 76 60 C68 56, 61 70, 60 88 Z"
+        fill="#FFFFFF"
+        opacity="0.95" />
+
+  <!-- Right Caring Hand / Supporting Wing -->
+  <path d="M140 88 C142 112, 126 134, 100 148 C110 128, 114 108, 112 84 C111 74, 115 64, 124 60 C132 56, 139 70, 140 88 Z"
+        fill="#CCFBF1"
+        opacity="0.9" />
+
+  <!-- Center Heart & Sprout of Hope (Mekar & Pemulihan Jiwa) -->
+  <!-- Left Heart Petal / Leaf -->
+  <path d="M100 114 C96 98, 80 82, 80 68 C80 58, 88 52, 96 56 C99 58, 100 62, 100 62 C100 62, 101 58, 104 56 C112 52, 120 58, 120 68 C120 82, 104 98, 100 114 Z"
+        fill="url(#sproutGrad)" />
+
+  <!-- Center Shining Light Dot (Titik Nur Nurani / Integritas) -->
+  <circle cx="100" cy="50" r="5" fill="#FFFFFF" opacity="0.9" />
+</svg>

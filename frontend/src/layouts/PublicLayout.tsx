@@ -74,9 +74,11 @@ export const PublicLayout: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           {/* Brand Logo */}
           <Link to="/" className="flex items-center gap-3 group focus:outline-hidden">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0F9F91] to-[#17324D] flex items-center justify-center shadow-md shadow-[#0F9F91]/20 group-hover:scale-105 transition-transform">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
+            <img
+              src="/images/logo-ruangaman.svg"
+              alt="Logo RUANGAMAN"
+              className="w-11 h-11 group-hover:scale-105 transition-transform drop-shadow-sm"
+            />
             <div>
               <span className="text-xl font-extrabold tracking-tight text-[#17324D]">
                 RUANG<span className="text-[#0F9F91]">AMAN</span>
@@ -189,9 +191,11 @@ export const PublicLayout: React.FC = () => {
             {/* Col 1: Brand & Commitment */}
             <div className="md:col-span-2 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#0F9F91] flex items-center justify-center text-white">
-                  <Shield className="w-5 h-5" />
-                </div>
+                <img
+                  src="/images/logo-ruangaman.svg"
+                  alt="Logo RUANGAMAN"
+                  className="w-9 h-9 drop-shadow-xs"
+                />
                 <span className="text-xl font-bold text-[#17324D]">
                   RUANG<span className="text-[#0F9F91]">AMAN</span>
                 </span>

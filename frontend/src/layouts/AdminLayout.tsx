@@ -74,9 +74,11 @@ export const AdminLayout: React.FC = () => {
       <aside className="hidden lg:flex lg:flex-col w-64 bg-[#17324D] text-white border-r border-slate-700/50 shadow-xl shrink-0">
         {/* Brand */}
         <div className="p-6 border-b border-white/10 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#0F9F91] flex items-center justify-center text-white shadow-md">
-            <Shield className="w-5 h-5" />
-          </div>
+          <img
+            src="/images/logo-ruangaman.svg"
+            alt="Logo RUANGAMAN"
+            className="w-10 h-10 drop-shadow-sm"
+          />
           <div>
             <span className="text-lg font-bold tracking-tight text-white">
               RUANG<span className="text-[#0F9F91]">AMAN</span>

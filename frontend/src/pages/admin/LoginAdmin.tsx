@@ -46,9 +46,11 @@ export const LoginAdmin: React.FC = () => {
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#0F9F91]/15 rounded-full blur-3xl pointer-events-none"></div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-3 z-10">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0F9F91] to-[#17324D] text-white flex items-center justify-center mx-auto shadow-lg shadow-[#0F9F91]/25">
-          <Shield className="w-7 h-7" />
-        </div>
+        <img
+          src="/images/logo-ruangaman.svg"
+          alt="Logo RUANGAMAN"
+          className="w-16 h-16 mx-auto drop-shadow-md"
+        />
         <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
           Portal Petugas Satgas & BK
         </h1>

@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 140" width="100%" height="100%" fill="none">
+  <defs>
+    <linearGradient id="shieldGradDark" x1="15%" y1="10%" x2="85%" y2="90%">
+      <stop offset="0%" stop-color="#2DD4BF" />
+      <stop offset="50%" stop-color="#0F9F91" />
+      <stop offset="100%" stop-color="#0F766E" />
+    </linearGradient>
+
+    <linearGradient id="sproutGradDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A7F3D0" />
+      <stop offset="100%" stop-color="#34D399" />
+    </linearGradient>
+
+    <filter id="logoShadowDark" x="-10%" y="-10%" width="130%" height="130%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- LOGOMARK SYMBOL -->
+  <g transform="translate(15, 10) scale(0.6)">
+    <!-- Outer Shield -->
+    <path d="M100 18 C145 18, 172 32, 172 48 C172 118, 138 162, 100 182 C62 162, 28 118, 28 48 C28 32, 55 18, 100 18 Z"
+          fill="url(#shieldGradDark)"
+          filter="url(#logoShadowDark)" />
+
+    <!-- Inner Soft Aura -->
+    <path d="M100 30 C136 30, 158 41, 158 54 C158 110, 130 146, 100 163 C70 146, 42 110, 42 54 C42 41, 64 30, 100 30 Z"
+          fill="#CCFBF1"
+          opacity="0.2" />
+
+    <!-- Left Caring Hand -->
+    <path d="M60 88 C58 112, 74 134, 100 148 C90 128, 86 108, 88 84 C89 74, 85 64, 76 60 C68 56, 61 70, 60 88 Z"
+          fill="#FFFFFF"
+          opacity="0.95" />
+
+    <!-- Right Caring Hand -->
+    <path d="M140 88 C142 112, 126 134, 100 148 C110 128, 114 108, 112 84 C111 74, 115 64, 124 60 C132 56, 139 70, 140 88 Z"
+          fill="#CCFBF1"
+          opacity="0.85" />
+
+    <!-- Heart & Leaf Sprout -->
+    <path d="M100 114 C96 98, 80 82, 80 68 C80 58, 88 52, 96 56 C99 58, 100 62, 100 62 C100 62, 101 58, 104 56 C112 52, 120 58, 120 68 C120 82, 104 98, 100 114 Z"
+          fill="url(#sproutGradDark)" />
+
+    <!-- Center Light Dot -->
+    <circle cx="100" cy="50" r="5" fill="#FFFFFF" opacity="0.95" />
+  </g>
+
+  <!-- LOGOTYPE WORDMARK -->
+  <g transform="translate(155, 74)">
+    <text font-family="'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+          font-size="46"
+          font-weight="900"
+          letter-spacing="-1.2">
+      <tspan fill="#FFFFFF">RUANG</tspan><tspan fill="#2DD4BF">AMAN</tspan>
+    </text>
+  </g>
+
+  <!-- TAGLINE & ACCREDITATION -->
+  <g transform="translate(158, 102)">
+    <text font-family="'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+          font-size="13"
+          font-weight="600"
+          fill="#94A3B8"
+          letter-spacing="0.4">
+      RUANG AMAN PELAPORAN &amp; PERLINDUNGAN SISWA
+    </text>
+  </g>
+
+  <!-- ACCENT BADGE LINE -->
+  <rect x="158" y="114" width="48" height="3" rx="1.5" fill="#2DD4BF" />
+</svg>
