@@ -25,7 +25,34 @@ CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id ON admin_sessions(admin_i
 CREATE INDEX IF NOT EXISTS idx_admin_sessions_last_activity ON admin_sessions(last_activity_at);
 
 -- =====================================================================
--- 2. ROW LEVEL SECURITY (RLS)
+-- 2. DEDUPLIKASI AMAN & UNIQUE CONSTRAINT PADA SESSION_TOKEN_HASH
+-- =====================================================================
+-- Bersihkan duplikasi jika ada sebelum membuat UNIQUE constraint.
+-- Hanya menghapus record yang lebih lama/idle, mempertahankan record dengan last_activity_at terbaru.
+DELETE FROM admin_sessions a
+USING admin_sessions b
+WHERE a.session_token_hash = b.session_token_hash
+  AND a.id <> b.id
+  AND (
+    a.last_activity_at < b.last_activity_at
+    OR (a.last_activity_at = b.last_activity_at AND a.created_at < b.created_at)
+    OR (a.last_activity_at = b.last_activity_at AND a.created_at = b.created_at AND a.id < b.id)
+  );
+
+-- Tambahkan UNIQUE constraint pada session_token_hash (idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'uq_admin_sessions_token_hash'
+    ) THEN
+        ALTER TABLE admin_sessions
+        ADD CONSTRAINT uq_admin_sessions_token_hash UNIQUE (session_token_hash);
+    END IF;
+END $$;
+
+-- =====================================================================
+-- 3. ROW LEVEL SECURITY (RLS)
 -- =====================================================================
 ALTER TABLE admin_sessions ENABLE ROW LEVEL SECURITY;
 
@@ -36,9 +63,10 @@ CREATE POLICY "admin_sessions_no_public_access" ON admin_sessions
     FOR ALL USING (false);
 
 -- =====================================================================
--- 3. FUNCTION & RPC: TOUCH/CREATE ADMIN SESSION
+-- 4. FUNCTION & RPC: TOUCH/CREATE ADMIN SESSION
 -- =====================================================================
 -- Membuat atau memperbarui waktu aktivitas sesi petugas (heartbeat/login awal).
+-- Menangani race condition request bersamaan melalui ON CONFLICT (session_token_hash).
 -- Menolak pembaruan jika sesi telah idle > 15 menit atau telah di-revoke.
 CREATE OR REPLACE FUNCTION touch_admin_session(
     p_admin_id           UUID,
@@ -56,7 +84,7 @@ DECLARE
     v_idle_limit  INTERVAL := INTERVAL '15 minutes';
     v_result      JSONB;
 BEGIN
-    -- Cari sesi aktif berdasarkan token_hash
+    -- 1. Cari sesi aktif berdasarkan token_hash
     SELECT * INTO v_session
     FROM admin_sessions
     WHERE session_token_hash = p_token_hash
@@ -65,19 +93,25 @@ BEGIN
     IF FOUND THEN
         -- Cek apakah sesi sudah dicabut
         IF v_session.is_revoked THEN
-            RAISE EXCEPTION 'SESSION_REVOKED: Sesi petugas telah dicabut atau dinonaktifkan'
-                USING ERRCODE = 'P0020';
+            RETURN jsonb_build_object(
+                'valid', false,
+                'code', 'SESSION_REVOKED',
+                'message', 'Sesi petugas telah dicabut atau dinonaktifkan'
+            );
         END IF;
 
         -- Cek apakah sesi sudah idle melebihi 15 menit
         IF (v_now - v_session.last_activity_at) > v_idle_limit THEN
-            -- Tandai sesi sebagai revoked/expired
+            -- Tandai sesi sebagai revoked/expired tanpa RAISE EXCEPTION agar ter-commit
             UPDATE admin_sessions
             SET is_revoked = TRUE
             WHERE id = v_session.id;
 
-            RAISE EXCEPTION 'SESSION_IDLE_TIMEOUT: Sesi berakhir karena tidak ada aktivitas selama 15 menit'
-                USING ERRCODE = 'P0021';
+            RETURN jsonb_build_object(
+                'valid', false,
+                'code', 'SESSION_IDLE_TIMEOUT',
+                'message', 'Sesi Anda berakhir karena tidak ada aktivitas selama 15 menit.'
+            );
         END IF;
 
         -- Perbarui last_activity_at dan perpanjang expires_at
@@ -89,13 +123,15 @@ BEGIN
             user_agent       = COALESCE(p_user_agent, user_agent)
         WHERE id = v_session.id;
 
-        SELECT row_to_json(s)::JSONB INTO v_result
-        FROM admin_sessions s
-        WHERE s.id = v_session.id;
-
-        RETURN v_result;
+        RETURN jsonb_build_object(
+            'valid', true,
+            'id', v_session.id,
+            'admin_id', v_session.admin_id,
+            'last_activity_at', v_now,
+            'expires_at', v_now + v_idle_limit
+        );
     ELSE
-        -- Buat sesi baru
+        -- 2. Buat sesi baru dengan ON CONFLICT untuk menangani race condition
         INSERT INTO admin_sessions (
             admin_id,
             auth_user_id,
@@ -117,17 +153,40 @@ BEGIN
             v_now + v_idle_limit,
             FALSE
         )
+        ON CONFLICT (session_token_hash) DO UPDATE
+        SET
+            last_activity_at = EXCLUDED.last_activity_at,
+            expires_at       = EXCLUDED.expires_at,
+            ip_address       = COALESCE(EXCLUDED.ip_address, admin_sessions.ip_address),
+            user_agent       = COALESCE(EXCLUDED.user_agent, admin_sessions.user_agent)
+        WHERE admin_sessions.is_revoked = FALSE
         RETURNING row_to_json(admin_sessions)::JSONB INTO v_result;
 
-        RETURN v_result;
+        IF v_result IS NULL THEN
+            RETURN jsonb_build_object(
+                'valid', false,
+                'code', 'SESSION_REVOKED',
+                'message', 'Sesi petugas telah dicabut atau dinonaktifkan'
+            );
+        END IF;
+
+        RETURN jsonb_build_object(
+            'valid', true,
+            'id', v_result->>'id',
+            'admin_id', v_result->>'admin_id',
+            'last_activity_at', v_now,
+            'expires_at', v_now + v_idle_limit
+        );
     END IF;
 END;
 $$;
 
 -- =====================================================================
--- 4. FUNCTION & RPC: VALIDATE ADMIN SESSION (READ-ONLY CHECK)
+-- 5. FUNCTION & RPC: VALIDATE ADMIN SESSION (READ-ONLY CHECK)
 -- =====================================================================
 -- Memvalidasi sesi pada request API biasa TANPA memperbarui waktu aktivitas.
+-- Mengembalikan objek JSON tanpa memicu ROLLBACK RAISE EXCEPTION sehingga
+-- update status revoked pada sesi expired tetap tersimpan permanen.
 CREATE OR REPLACE FUNCTION validate_admin_session(
     p_token_hash VARCHAR(64)
 )
@@ -144,22 +203,34 @@ BEGIN
     WHERE session_token_hash = p_token_hash;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'SESSION_NOT_FOUND: Sesi petugas tidak ditemukan'
-            USING ERRCODE = 'P0022';
+        RETURN jsonb_build_object(
+            'valid', false,
+            'code', 'SESSION_NOT_FOUND',
+            'message', 'Sesi petugas tidak ditemukan'
+        );
     END IF;
 
     IF v_session.is_revoked THEN
-        RAISE EXCEPTION 'SESSION_REVOKED: Sesi petugas telah dicabut atau dinonaktifkan'
-            USING ERRCODE = 'P0020';
+        RETURN jsonb_build_object(
+            'valid', false,
+            'code', 'SESSION_REVOKED',
+            'message', 'Sesi petugas telah dicabut atau dinonaktifkan',
+            'admin_id', v_session.admin_id
+        );
     END IF;
 
     IF (v_now - v_session.last_activity_at) > v_idle_limit THEN
+        -- Tandai sesi sebagai revoked secara permanen (tanpa dibatalkan oleh RAISE EXCEPTION)
         UPDATE admin_sessions
         SET is_revoked = TRUE
         WHERE id = v_session.id;
 
-        RAISE EXCEPTION 'SESSION_IDLE_TIMEOUT: Sesi berakhir karena tidak ada aktivitas selama 15 menit'
-            USING ERRCODE = 'P0021';
+        RETURN jsonb_build_object(
+            'valid', false,
+            'code', 'SESSION_IDLE_TIMEOUT',
+            'message', 'Sesi Anda berakhir karena tidak ada aktivitas selama 15 menit.',
+            'admin_id', v_session.admin_id
+        );
     END IF;
 
     RETURN jsonb_build_object(
@@ -172,7 +243,7 @@ END;
 $$;
 
 -- =====================================================================
--- 4. FUNCTION & RPC: REVOKE ADMIN SESSIONS ON DEACTIVATION
+-- 6. FUNCTION & RPC: REVOKE ADMIN SESSIONS ON DEACTIVATION
 -- =====================================================================
 CREATE OR REPLACE FUNCTION revoke_admin_sessions(
     p_admin_id UUID

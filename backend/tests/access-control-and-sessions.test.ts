@@ -558,4 +558,153 @@ describe('Access Control, Admin Management & Session Security Tests', () => {
       expect(profile.permissions).toContain('view_audit_trail');
     });
   });
+
+  // =========================================================================
+  // 6. FINAL SESSION SECURITY HARDENING: REVOCATION, CONCURRENCY & RPC
+  // =========================================================================
+  describe('6. Hardened Session Revocation, Concurrency & RPC Handling', () => {
+    it('1. Logout gagal (HTTP 500) jika backend/database gagal mencabut sesi (fail-closed)', async () => {
+      // Mock revokeSession untuk mensimulasikan kegagalan database
+      const revokeSpy = vi.spyOn(sessionService, 'revokeSession').mockRejectedValueOnce(
+        new Error('Database connection failed during session revocation')
+      );
+
+      const res = await request(app)
+        .post('/api/v1/admin/auth/logout')
+        .set('Authorization', `Bearer ${superAdminToken}`);
+
+      expect(res.status).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toContain('Gagal mencabut sesi keamanan');
+
+      revokeSpy.mockRestore();
+    });
+
+    it('2. RPC revoke mengembalikan error dan error tersebut ditangani secara fail-closed', async () => {
+      const originalEnv = process.env.USE_SUPABASE;
+      process.env.USE_SUPABASE = 'true';
+
+      try {
+        // Pada mode enforce Supabase tanpa database terkoneksi, revokeAllSessionsForAdmin harus fail-closed (reject)
+        await expect(sessionService.revokeAllSessionsForAdmin('test-admin-id')).rejects.toThrow();
+      } finally {
+        process.env.USE_SUPABASE = originalEnv;
+      }
+    });
+
+    it('3. Penonaktifan petugas tidak mengizinkan petugas tetap menggunakan endpoint', async () => {
+      const targetOfficerId = 'a0000001-0000-0000-0000-000000000002';
+      const officerToken = counselorToken;
+
+      // 1. Nonaktifkan petugas via Super Admin
+      const deactRes = await request(app)
+        .patch(`/api/v1/admin/petugas/${targetOfficerId}/status`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ is_active: false });
+
+      expect(deactRes.status).toBe(200);
+
+      // 2. Petugas mencoba mengakses endpoint yang dilindungi
+      const accessRes = await request(app)
+        .get('/api/v1/admin/reports')
+        .set('Authorization', `Bearer ${officerToken}`);
+
+      expect(accessRes.status).toBe(401);
+      expect(accessRes.body.success).toBe(false);
+      expect(accessRes.body.message).toContain('tidak aktif');
+
+      // 3. Pulihkan kembali akun petugas untuk test lain
+      await getRepositoriesSync().adminRepository.updateAdmin(targetOfficerId, { is_active: true });
+    });
+
+    it('4. Dua request touch bersamaan tidak membuat duplicate session', async () => {
+      sessionService.resetForTest();
+      const concurrentToken = 'demo-token-counselor-concurrent-race-test';
+      const adminId = 'a0000001-0000-0000-0000-000000000002';
+
+      // Jalankan 2 request touch secara bersamaan
+      const [res1, res2] = await Promise.all([
+        sessionService.touchSession(concurrentToken, adminId),
+        sessionService.touchSession(concurrentToken, adminId),
+      ]);
+
+      expect(res1.valid).toBe(true);
+      expect(res2.valid).toBe(true);
+
+      // Pastikan hanya 1 record sesi yang tersimpan untuk session_token_hash tersebut
+      expect(sessionService.getSessionCountForTest()).toBe(1);
+    });
+
+    it('5. Session refresh tidak mengubah identitas sesi dan perangkat berbeda tidak tercampur', () => {
+      const headerB64 = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64');
+
+      // Sesi Perangkat 1
+      const p1 = Buffer.from(JSON.stringify({ session_id: 'session-dev-1', sub: 'user-uuid-common' })).toString('base64');
+      const p1Refreshed = Buffer.from(JSON.stringify({ session_id: 'session-dev-1', sub: 'user-uuid-common', exp: 9999999 })).toString('base64');
+
+      // Sesi Perangkat 2 (user sama, perangkat berbeda)
+      const p2 = Buffer.from(JSON.stringify({ session_id: 'session-dev-2', sub: 'user-uuid-common' })).toString('base64');
+
+      const tokenDev1 = `${headerB64}.${p1}.sig1`;
+      const tokenDev1Refreshed = `${headerB64}.${p1Refreshed}.sig2`;
+      const tokenDev2 = `${headerB64}.${p2}.sig3`;
+
+      // 1. Refreshed token harus memiliki sessionKey identik dengan token asli
+      expect(sessionService.getSessionKey(tokenDev1)).toBe('sb-session-session-dev-1');
+      expect(sessionService.getSessionKey(tokenDev1Refreshed)).toBe('sb-session-session-dev-1');
+
+      // 2. Perangkat 2 harus memiliki sessionKey berbeda meski authUserId (sub) sama
+      expect(sessionService.getSessionKey(tokenDev2)).toBe('sb-session-session-dev-2');
+      expect(sessionService.getSessionKey(tokenDev1)).not.toBe(sessionService.getSessionKey(tokenDev2));
+
+      // 3. Token tanpa session_id tidak menggunakan sub sebagai fallback agar tidak tercampur
+      const pNoSessionA = Buffer.from(JSON.stringify({ sub: 'user-uuid-common', nonce: 'A' })).toString('base64');
+      const pNoSessionB = Buffer.from(JSON.stringify({ sub: 'user-uuid-common', nonce: 'B' })).toString('base64');
+      const tokenNoSessA = `${headerB64}.${pNoSessionA}.sigA`;
+      const tokenNoSessB = `${headerB64}.${pNoSessionB}.sigB`;
+
+      const keyA = sessionService.getSessionKey(tokenNoSessA);
+      const keyB = sessionService.getSessionKey(tokenNoSessB);
+      expect(keyA).not.toBe(keyB);
+      expect(keyA).not.toContain('user-uuid-common');
+    });
+
+    it('6. Sesi expired tetap ditolak dan statusnya konsisten tercatat revoked', async () => {
+      const expiredToken = 'demo-token-expired-test-officer';
+      const adminId = 'a0000001-0000-0000-0000-000000000003';
+
+      // Sentuh sesi 20 menit yang lalu
+      const twentyMinsAgo = Date.now() - 20 * 60 * 1000;
+      sessionService.simulateLastActivity(expiredToken, twentyMinsAgo, adminId);
+
+      // Validasi sesi
+      const valResult = await sessionService.validateSession(expiredToken, adminId);
+      expect(valResult.valid).toBe(false);
+      expect(valResult.code).toBe('SESSION_IDLE_TIMEOUT');
+
+      // Validasi berikutnya harus langsung ditolak sebagai SESSION_REVOKED
+      const subsequentVal = await sessionService.validateSession(expiredToken, adminId);
+      expect(subsequentVal.valid).toBe(false);
+      expect(subsequentVal.code).toBe('SESSION_REVOKED');
+    });
+
+    it('7. Validasi biasa tidak memperpanjang idle time sedangkan heartbeat memperpanjang', async () => {
+      const testToken = 'demo-token-idle-timer-comparison';
+      const adminId = 'a0000001-0000-0000-0000-000000000001';
+
+      // 1. Sentuh sesi pada T0 (7 menit lalu)
+      const t0 = Date.now() - 7 * 60 * 1000;
+      sessionService.simulateLastActivity(testToken, t0, adminId);
+      expect(sessionService.getLastActivityForTest(testToken, adminId)).toBe(t0);
+
+      // 2. Validasi sesi biasa -> lastActivityAt HARUS TETAP T0
+      await sessionService.validateSession(testToken, adminId);
+      expect(sessionService.getLastActivityForTest(testToken, adminId)).toBe(t0);
+
+      // 3. Heartbeat / touch -> lastActivityAt HARUS DIPERBARUI (> T0)
+      await sessionService.touchSession(testToken, adminId);
+      const t1 = sessionService.getLastActivityForTest(testToken, adminId);
+      expect(t1).toBeGreaterThan(t0);
+    });
+  });
 });

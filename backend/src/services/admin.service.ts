@@ -163,7 +163,12 @@ export class AdminService {
     // Jika dinonaktifkan, cabut seluruh sesi aktifnya secara instan
     if (!is_active) {
       const { sessionService } = await import('./session.service.js');
-      await sessionService.revokeAllSessionsForAdmin(targetAdminId);
+      try {
+        await sessionService.revokeAllSessionsForAdmin(targetAdminId);
+      } catch (err: any) {
+        console.error('[AdminService] Akun petugas berhasil dinonaktifkan namun gagal mencabut sesi:', err?.message);
+        throw err;
+      }
     }
 
     return updated;

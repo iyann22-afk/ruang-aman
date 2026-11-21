@@ -259,8 +259,12 @@ export class AdminController {
         success: true,
         message: 'Sesi petugas berhasil diakhiri dengan aman.',
       });
-    } catch (err) {
-      next(err);
+    } catch (err: any) {
+      console.error('[AdminController] Gagal mencabut sesi saat logout:', err?.message);
+      res.status(500).json({
+        success: false,
+        message: 'Gagal mencabut sesi keamanan. Silakan coba lagi.',
+      });
     }
   }
 }
