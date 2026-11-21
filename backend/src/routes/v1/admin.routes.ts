@@ -8,9 +8,46 @@ import { updateStatusSchema } from '../../validators/report.validator.js';
 
 const router = Router();
 
-// Public login endpoint for admin demo
+// Public login endpoint for admin demo (Week 2 compat)
 router.post('/auth/login', validateBody(adminLoginSchema), (req, res, next) => {
   adminController.login(req, res, next);
+});
+
+// Week 3: Verify Supabase token for Google OAuth admin login
+// Frontend calls GET /api/v1/admin/auth/verify with Bearer token
+// Returns 200 if admin, 403 if not an admin
+router.get('/auth/verify', async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ success: false, message: 'Token tidak ditemukan' });
+    return;
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const { verifySupabaseToken } = await import('../../repositories/supabase/supabase.client.js');
+    const { getRepositories } = await import('../../repositories/repository.factory.js');
+
+    const user = await verifySupabaseToken(token);
+    if (!user) {
+      res.status(401).json({ success: false, message: 'Token tidak valid' });
+      return;
+    }
+
+    const { adminRepository } = await getRepositories();
+    const extRepo = adminRepository as { findByAuthUserId?: (id: string) => Promise<import('../../types/index.js').Admin | null> };
+    const admin = extRepo.findByAuthUserId
+      ? await extRepo.findByAuthUserId(user.id)
+      : null;
+
+    if (!admin || !admin.is_active) {
+      res.status(403).json({ success: false, message: 'Bukan petugas terdaftar' });
+      return;
+    }
+
+    res.json({ success: true, admin: { id: admin.id, full_name: admin.full_name, role: admin.role, email: admin.email } });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // All routes below require Admin Authentication

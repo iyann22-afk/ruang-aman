@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { PublicLayout } from '../layouts/PublicLayout.js';
 import { AdminLayout } from '../layouts/AdminLayout.js';
@@ -10,6 +10,9 @@ import { BuatLaporan } from '../pages/public/BuatLaporan.js';
 import { LacakLaporan } from '../pages/public/LacakLaporan.js';
 import { Edukasi } from '../pages/public/Edukasi.js';
 import { Pendampingan } from '../pages/public/Pendampingan.js';
+
+// Auth Callback (lazy — jarang diakses)
+const AuthCallback = lazy(() => import('../pages/public/AuthCallback.js'));
 
 // Admin Pages
 import { LoginAdmin } from '../pages/admin/LoginAdmin.js';
@@ -32,6 +35,16 @@ export const router = createBrowserRouter([
       { path: 'edukasi', element: <Edukasi /> },
       { path: 'pendampingan', element: <Pendampingan /> },
     ],
+  },
+
+  // OAuth Callback (Supabase Google Login) — tanpa layout
+  {
+    path: '/auth/callback',
+    element: (
+      <React.Suspense fallback={<div className="min-h-screen bg-[#17324D]" />}>
+        <AuthCallback />
+      </React.Suspense>
+    ),
   },
 
   // Admin Auth Route (Without AdminLayout)

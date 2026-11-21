@@ -10,6 +10,7 @@
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@lottiefiles/dotlottie-wc": "^0.8.2",
+    "@supabase/supabase-js": "^2.119.2",
     "@tsparticles/basic": "^3.8.1",
     "@tsparticles/engine": "^3.8.1",
     "@tsparticles/react": "^3.0.0",

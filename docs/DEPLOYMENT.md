@@ -1,120 +1,131 @@
-# PANDUAN DEPLOYMENT VERCEL DUAL-PROJECT
-## RUANGAMAN FULL-STACK (FRONTEND & BACKEND)
+# DEPLOYMENT GUIDE — RUANGAMAN Week 3
 
-Dokumen ini menjelaskan konfigurasi dan alur deployment platform RUANGAMAN sebagai dua proyek Vercel terpisah dari satu repository monorepo GitHub.
+Panduan deployment ke Vercel menggunakan satu repository GitHub dengan dua project Vercel.
 
 ---
 
-## 1. IKHTISAR ARSITEKTUR DEPLOYMENT
+## PERSIAPAN
 
-```mermaid
-flowchart TD
-    subgraph GitHub Monorepo
-        R[RUANGAMAN Repository]
-        F[frontend/ - Vite React SPA]
-        B[backend/ - Express TypeScript Serverless]
-    end
+### 1. Push ke GitHub
 
-    subgraph Vercel Projects
-        VF[Vercel Project 1: ruangaman-frontend]
-        VB[Vercel Project 2: ruangaman-api]
-    end
+```bash
+cd c:\laragon\www\ruang-aman
 
-    subgraph Database
-        S[(Supabase PostgreSQL - Week 3)]
-    end
+# Pastikan branch sudah dibuat
+git branch  # harus di feat/week-3-supabase-google-vercel
 
-    R --> F
-    R --> B
-    F --> VF
-    B --> VB
-    VF -- HTTPS REST API Requests --> VB
-    VB -- Service Key & RLS Policies --> S
+# Commit semua perubahan
+git add .
+git commit -m "feat: week 3 - supabase, google oauth, vercel config"
+
+# Push branch (JANGAN push ke main dulu tanpa review)
+git push origin feat/week-3-supabase-google-vercel
+```
+
+Setelah review dan tes, merge ke main:
+```bash
+git checkout main
+git merge feat/week-3-supabase-google-vercel
+git push origin main
 ```
 
 ---
 
-## 2. PROYEK 1: FRONTEND (Vercel)
+## PROJECT 1 — FRONTEND
 
-### Konfigurasi Vercel:
-- **Project Name:** `ruangaman-frontend` (atau kustom)
-- **Framework Preset:** Vite
-- **Root Directory:** `frontend`
-- **Build Command:** `npm run build`
-- **Output Directory:** `dist`
-- **Install Command:** `npm install`
+### Setup di Vercel
 
-### Environment Variables:
-| Variable | Value Production | Keterangan |
-|---|---|---|
-| `VITE_API_BASE_URL` | `https://ruangaman-api.vercel.app/api/v1` | URL endpoint production backend |
+1. Buka [vercel.com](https://vercel.com) → **Add New Project**
+2. Import repository GitHub RUANGAMAN
+3. Konfigurasi:
 
-### Routing Single Page Application (SPA):
-Frontend menyertakan file `frontend/vercel.json` untuk memastikan routing client-side React Router (`/`, `/lapor`, `/lacak`, dll) diarahkan ke `index.html`:
-```json
-{
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
+| Setting | Nilai |
+|---------|-------|
+| **Project Name** | `ruangaman-frontend` |
+| **Framework Preset** | Vite |
+| **Root Directory** | `frontend` |
+| **Build Command** | `npm run build` |
+| **Output Directory** | `dist` |
+
+### Environment Variables Frontend
+
+Di Vercel project → **Settings → Environment Variables**, tambahkan:
+
+| Key | Value |
+|-----|-------|
+| `VITE_API_BASE_URL` | `https://ruangaman-backend.vercel.app/api/v1` |
+| `VITE_SUPABASE_URL` | `https://your-ref.supabase.co` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `eyJ...anon-key` |
+
+4. Klik **Deploy**
+5. Catat URL production yang diberikan Vercel
+
+---
+
+## PROJECT 2 — BACKEND
+
+### Setup di Vercel
+
+1. Vercel Dashboard → **Add New Project**
+2. Import **repository yang sama**
+3. Konfigurasi:
+
+| Setting | Nilai |
+|---------|-------|
+| **Project Name** | `ruangaman-backend` |
+| **Framework Preset** | Other |
+| **Root Directory** | `backend` |
+| **Build Command** | `npm run build` |
+| **Output Directory** | *(kosongkan)* |
+
+### Environment Variables Backend
+
+| Key | Value |
+|-----|-------|
+| `NODE_ENV` | `production` |
+| `FRONTEND_URL` | `https://ruangaman-frontend.vercel.app` |
+| `SUPABASE_URL` | `https://your-ref.supabase.co` |
+| `SUPABASE_PUBLISHABLE_KEY` | `eyJ...anon-key` |
+| `SUPABASE_SECRET_KEY` | `eyJ...service-role-key` |
+| `USE_SUPABASE` | `true` |
+
+4. Klik **Deploy**
+5. Catat URL backend yang diberikan Vercel
+
+---
+
+## SETELAH DEPLOY — UPDATE URL
+
+### Update Frontend env di Vercel
+Ubah `VITE_API_BASE_URL` ke URL backend yang sebenarnya (didapat setelah deploy backend).
+
+### Update Supabase Auth Settings
+Di Supabase → **Authentication → URL Configuration**:
+- Site URL: `https://your-frontend.vercel.app`
+- Redirect URLs: `https://your-frontend.vercel.app/auth/callback`
+
+### Update Google Cloud Console
+Di **Authorized redirect URIs**, tambahkan:
+```
+https://your-ref.supabase.co/auth/v1/callback
 ```
 
 ---
 
-## 3. PROYEK 2: BACKEND API (Vercel Serverless Function)
+## VERIFIKASI DEPLOYMENT
 
-### Konfigurasi Vercel:
-- **Project Name:** `ruangaman-api`
-- **Framework Preset:** Other
-- **Root Directory:** `backend`
-- **Build Command:** `npm run build`
-- **Install Command:** `npm install`
-- **Entry Point Vercel:** `src/index.ts` (meng-export `app` Express secara default)
-- **Local Dev:** `src/server.ts` (menjalankan `app.listen(PORT, ...)` di port 4000)
+```bash
+# Health check backend
+curl https://your-backend.vercel.app/api/v1/health
 
-### File `backend/vercel.json`:
-```json
-{
-  "version": 2,
-  "builds": [
-    {
-      "src": "src/index.ts",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "src/index.ts"
-    }
-  ]
-}
+# Kategori laporan
+curl https://your-backend.vercel.app/api/v1/public/categories
 ```
 
-### Environment Variables Backend:
-| Variable | Value Production | Keterangan |
-|---|---|---|
-| `NODE_ENV` | `production` | Mode produksi |
-| `FRONTEND_URL` | `https://ruangaman.vercel.app` | Origin yang diizinkan CORS |
-| `DEMO_ADMIN_EMAIL` | `admin@ruangaman.id` | Akun demo lokal |
-| `DEMO_ADMIN_PASSWORD` | `PasswordDemo123!` | Password demo lokal |
-| `SUPABASE_URL` | `https://xxxx.supabase.co` | (Dikonfigurasi Minggu 3) |
-| `SUPABASE_ANON_KEY` | `eyJhb...` | (Dikonfigurasi Minggu 3) |
-| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhb...` | (Dikonfigurasi Minggu 3) |
-
----
-
-## 4. LANGKAH-LANGKAH DEPLOYMENT
-
-1. **Push ke GitHub:** Pastikan branch utama bersih dan semua test lolos.
-2. **Import Proyek Frontend di Vercel Dashboard:**
-   - Atur Root Directory ke `frontend`.
-   - Set environment variable `VITE_API_BASE_URL`.
-   - Klik Deploy.
-3. **Import Proyek Backend di Vercel Dashboard:**
-   - Atur Root Directory ke `backend`.
-   - Set environment variable `FRONTEND_URL` ke domain frontend yang telah dibuat.
-   - Klik Deploy.
-4. **Verifikasi:**
-   - Akses `https://ruangaman-api.vercel.app/api/v1/health` (harus merespons 200 OK).
-   - Akses `https://ruangaman.vercel.app/` dan coba kirim laporan demo serta cek tracking.
+Checklist manual:
+- [ ] Frontend terbuka di URL Vercel
+- [ ] Form laporan bisa disubmit dan data tersimpan di Supabase
+- [ ] Tracking code berfungsi
+- [ ] Tombol Google Login muncul di navbar
+- [ ] Admin login Google redirect ke dashboard (jika akun terdaftar)
+- [ ] Halaman admin terbuka dan data tampil dari Supabase

@@ -1,5 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import { supabaseAdmin } from '../repositories/supabase/supabase.client.js';
 
 const allowedMimeTypes = [
   'image/jpeg',
@@ -8,31 +11,31 @@ const allowedMimeTypes = [
   'application/pdf',
 ];
 
+const allowedExtensions: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'application/pdf': '.pdf',
+};
+
+const BUCKET_NAME = 'report-evidence-private';
+
+// Multer keeps file in memory buffer; we upload to Supabase Storage after validation
 const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5 MB max
-  },
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
   fileFilter: (_req, file, cb) => {
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(
-        new Error(
-          'Format file tidak didukung. Harap gunakan file gambar (JPG, PNG, WEBP) atau dokumen PDF.'
-        )
-      );
+      cb(new Error('Format file tidak didukung. Gunakan JPG, PNG, WEBP, atau PDF.'));
     }
   },
 });
 
-export const uploadOptionalEvidence = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
+export const uploadOptionalEvidence = (req: Request, res: Response, next: NextFunction): void => {
   const singleUpload = upload.single('evidence');
   singleUpload(req, res, (err: any) => {
     if (err instanceof multer.MulterError) {
@@ -61,3 +64,55 @@ export const uploadOptionalEvidence = (
     next();
   });
 };
+
+/**
+ * Upload file bukti ke Supabase Storage (private bucket).
+ * Dipanggil setelah uploadOptionalEvidence middleware.
+ *
+ * @param reportId - ID laporan (untuk path folder)
+ * @param file - Multer file object dari req.file
+ * @returns storagePath string yang disimpan di DB
+ */
+export async function uploadEvidenceToStorage(
+  reportId: string,
+  file: Express.Multer.File
+): Promise<string> {
+  const ext = allowedExtensions[file.mimetype] || path.extname(file.originalname);
+  const safeFilename = `${uuidv4()}${ext}`;
+  const storagePath = `${reportId}/${safeFilename}`;
+
+  if (supabaseAdmin) {
+    const { error } = await supabaseAdmin.storage
+      .from(BUCKET_NAME)
+      .upload(storagePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (error) {
+      throw new Error(`Gagal menyimpan file bukti: ${error.message}`);
+    }
+
+    return storagePath;
+  }
+
+  // Development fallback: simpan path lokal saja (tidak ada file fisik)
+  return `local/${storagePath}`;
+}
+
+/**
+ * Buat signed URL untuk mengakses file bukti (admin only).
+ * URL berlaku 60 menit.
+ */
+export async function getEvidenceSignedUrl(storagePath: string): Promise<string | null> {
+  if (!supabaseAdmin || storagePath.startsWith('local/')) {
+    return null;
+  }
+
+  const { data, error } = await supabaseAdmin.storage
+    .from(BUCKET_NAME)
+    .createSignedUrl(storagePath, 60 * 60); // 1 jam
+
+  if (error || !data) return null;
+  return data.signedUrl;
+}
