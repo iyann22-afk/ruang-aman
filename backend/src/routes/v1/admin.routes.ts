@@ -8,8 +8,16 @@ import { updateStatusSchema } from '../../validators/report.validator.js';
 
 const router = Router();
 
-// Public login endpoint for admin demo (Week 2 compat)
+// Demo login endpoint — HANYA tersedia di development atau ENABLE_DEMO_AUTH=true
 router.post('/auth/login', validateBody(adminLoginSchema), (req, res, next) => {
+  const isDemoAllowed =
+    process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEMO_AUTH === 'true';
+
+  if (!isDemoAllowed) {
+    res.status(404).json({ success: false, message: 'Endpoint tidak ditemukan' });
+    return;
+  }
+
   adminController.login(req, res, next);
 });
 

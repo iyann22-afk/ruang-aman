@@ -96,7 +96,15 @@ export async function uploadEvidenceToStorage(
     return storagePath;
   }
 
-  // Development fallback: simpan path lokal saja (tidak ada file fisik)
+  // Production: WAJIB ada Supabase Storage — lempar error jika tidak tersedia
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'Supabase Storage tidak dikonfigurasi. Upload bukti tidak dapat dilanjutkan di production.'
+    );
+  }
+
+  // Development fallback: simulasikan path saja (tidak ada file fisik)
+  console.warn(`[DEV_SIMULATION] File bukti tidak diupload ke storage. Path simulasi: local/${storagePath}`);
   return `local/${storagePath}`;
 }
 

@@ -158,3 +158,87 @@ CREATE POLICY "counseling_bookings_no_public_access" ON counseling_bookings
 -- SELESAI
 -- =====================================================================
 SELECT 'Migration 0002 Week 3 berhasil diterapkan.' AS status;
+
+-- =====================================================================
+-- 5. RPC: ATOMIC SLOT BOOKING (mencegah double booking)
+-- =====================================================================
+CREATE OR REPLACE FUNCTION book_counseling_slot(
+    p_slot_id              UUID,
+    p_booking_code         TEXT,
+    p_student_name         TEXT,
+    p_contact_method       TEXT,
+    p_contact_value        TEXT,
+    p_privacy_acknowledged BOOLEAN
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_slot       RECORD;
+    v_booking_id UUID := gen_random_uuid();
+    v_result     JSONB;
+BEGIN
+    SELECT * INTO v_slot FROM counseling_slots WHERE id = p_slot_id FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'SLOT_NOT_FOUND: Slot konseling tidak ditemukan' USING ERRCODE = 'P0001';
+    END IF;
+
+    IF v_slot.status <> 'available' THEN
+        RAISE EXCEPTION 'SLOT_UNAVAILABLE: Slot konseling sudah tidak tersedia' USING ERRCODE = 'P0002';
+    END IF;
+
+    IF NOT v_slot.is_published THEN
+        RAISE EXCEPTION 'SLOT_NOT_PUBLISHED: Slot konseling tidak dipublikasikan' USING ERRCODE = 'P0003';
+    END IF;
+
+    INSERT INTO counseling_bookings (id, slot_id, booking_code, student_name, contact_method, contact_value, privacy_acknowledged, booking_status)
+    VALUES (v_booking_id, p_slot_id, p_booking_code, p_student_name, p_contact_method, p_contact_value, p_privacy_acknowledged, 'confirmed');
+
+    UPDATE counseling_slots SET status = 'booked' WHERE id = p_slot_id;
+
+    SELECT row_to_json(b)::JSONB INTO v_result FROM counseling_bookings b WHERE b.id = v_booking_id;
+    RETURN v_result;
+END;
+$$;
+
+-- =====================================================================
+-- 6. RPC: ATOMIC STATUS UPDATE + AUDIT TRAIL
+-- =====================================================================
+CREATE OR REPLACE FUNCTION update_report_status_with_history(
+    p_report_id           UUID,
+    p_new_status          TEXT,
+    p_changed_by_admin_id UUID DEFAULT NULL,
+    p_public_message      TEXT DEFAULT NULL,
+    p_internal_note       TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_report          RECORD;
+    v_previous_status TEXT;
+    v_history_id      UUID := gen_random_uuid();
+    v_result          JSONB;
+BEGIN
+    SELECT * INTO v_report FROM reports WHERE id = p_report_id FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'REPORT_NOT_FOUND: Laporan tidak ditemukan' USING ERRCODE = 'P0010';
+    END IF;
+
+    v_previous_status := v_report.status;
+
+    UPDATE reports
+    SET status = p_new_status, updated_at = NOW(),
+        assigned_admin_id = COALESCE(p_changed_by_admin_id, assigned_admin_id),
+        resolved_at = CASE WHEN p_new_status IN ('resolved', 'closed') THEN NOW() ELSE resolved_at END
+    WHERE id = p_report_id;
+
+    INSERT INTO report_status_histories (id, report_id, changed_by_admin_id, previous_status, new_status, public_message, internal_note, created_at)
+    VALUES (v_history_id, p_report_id, p_changed_by_admin_id, v_previous_status, p_new_status, p_public_message, p_internal_note, NOW());
+
+    SELECT row_to_json(r)::JSONB INTO v_result FROM reports r WHERE r.id = p_report_id;
+    RETURN v_result;
+END;
+$$;

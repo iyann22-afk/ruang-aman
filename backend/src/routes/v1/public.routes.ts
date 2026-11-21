@@ -68,4 +68,62 @@ router.post(
   }
 );
 
+// 7. User Profile Sync (dipanggil setelah Google OAuth berhasil)
+// Memerlukan Authorization: Bearer <supabase_token>
+// Membuat atau memperbarui profil pengguna tanpa mengganti UUID primary key
+router.post('/profile/sync', async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      res.status(401).json({ success: false, message: 'Token autentikasi tidak ditemukan' });
+      return;
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    // Verifikasi token Supabase
+    const { verifySupabaseToken } = await import('../../repositories/supabase/supabase.client.js');
+    const user = await verifySupabaseToken(token);
+
+    if (!user) {
+      res.status(401).json({ success: false, message: 'Token tidak valid atau sudah kadaluarsa' });
+      return;
+    }
+
+    // Ambil data profil dari request body (nama dan avatar dari Google)
+    const { full_name, avatar_url } = req.body as {
+      full_name?: string;
+      avatar_url?: string;
+    };
+
+    // Pastikan field sensitif tidak bisa dimanipulasi
+    // (role, is_active, dll. tidak ada di user_profiles — aman)
+
+    // Upsert profil tanpa mengganti UUID primary key
+    const { SupabaseUserProfileRepository } = await import(
+      '../../repositories/supabase/supabase-user-profile.repository.js'
+    );
+    const profileRepo = new SupabaseUserProfileRepository();
+    const profile = await profileRepo.upsertProfile(
+      user.id,
+      full_name?.trim() || undefined,
+      avatar_url || undefined
+    );
+
+    res.json({
+      success: true,
+      profile: {
+        id: profile.id,
+        auth_user_id: profile.auth_user_id,
+        full_name: profile.full_name,
+        avatar_url: profile.avatar_url,
+        created_at: profile.created_at,
+        updated_at: profile.updated_at,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

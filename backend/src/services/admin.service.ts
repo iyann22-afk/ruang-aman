@@ -12,16 +12,27 @@ export class AdminService {
   }
 
   async login(email: string, password: string): Promise<{ token: string; admin: Admin }> {
+    // Demo login HANYA diizinkan di development atau ketika ENABLE_DEMO_AUTH=true
+    const isDemoAllowed =
+      process.env.NODE_ENV !== 'production' || process.env.ENABLE_DEMO_AUTH === 'true';
+
+    if (!isDemoAllowed) {
+      throw Object.assign(new Error('Login demo tidak tersedia di production'), { statusCode: 403 });
+    }
+
     const repo = this.getRepository();
-    // Check credentials against admin account
     const admin = await repo.findByEmail(email);
     if (!admin) {
       throw new Error('Kredensial tidak valid: Akun petugas tidak ditemukan');
     }
 
-    // Demo password check for development/testing
+    if (!admin.is_active) {
+      throw new Error('Akun petugas tidak aktif');
+    }
+
+    // Hanya gunakan password dari config — hapus fallback hardcoded
     const validPassword = config.demoAdmin.password;
-    if (password !== validPassword && password !== 'PasswordDemo123!') {
+    if (!validPassword || password !== validPassword) {
       throw new Error('Kredensial tidak valid: Password demo salah');
     }
 

@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import {
   Report,
@@ -13,11 +14,17 @@ import {
 } from '../interfaces/report.repository.interface.js';
 import { supabaseAdmin } from './supabase.client.js';
 
+/**
+ * Generator tracking code kriptografis.
+ * Menggunakan crypto.randomBytes agar tidak mudah ditebak.
+ * Format: RA-XXXXXXXX (8 karakter dari alfabet RUANGAMAN)
+ */
 function generateTrackingCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 karakter, ruang 32^8 = 1 triliun+
+  const bytes = randomBytes(8);
   let code = 'RA-';
-  for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+  for (const byte of bytes) {
+    code += chars[byte % chars.length];
   }
   return code;
 }
@@ -26,31 +33,46 @@ export class SupabaseReportRepository implements IReportRepository {
   async createReport(dto: CreateReportDTO): Promise<Report> {
     if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
 
-    const tracking_code = generateTrackingCode();
-    const { data, error } = await supabaseAdmin
-      .from('reports')
-      .insert({
-        tracking_code,
-        category_id: dto.category_id,
-        incident_date: dto.incident_date,
-        incident_location: dto.incident_location,
-        chronology: dto.chronology,
-        identity_mode: dto.identity_mode,
-        reporter_name: dto.identity_mode === 'anonymous' ? null : dto.reporter_name ?? null,
-        reporter_contact:
-          dto.identity_mode === 'anonymous' ? null : dto.reporter_contact ?? null,
-        reporter_user_id: null, // Default null; dikaitkan terpisah atas persetujuan pengguna
-        privacy_acknowledged: dto.privacy_acknowledged,
-        status: 'submitted',
-      })
-      .select()
-      .single();
+    // Retry hingga 3 kali jika terjadi unique conflict pada tracking_code
+    let report: Report | null = null;
+    let lastError: string = '';
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const tracking_code = generateTrackingCode();
+      const { data, error } = await supabaseAdmin
+        .from('reports')
+        .insert({
+          tracking_code,
+          category_id: dto.category_id,
+          incident_date: dto.incident_date,
+          incident_location: dto.incident_location,
+          chronology: dto.chronology,
+          identity_mode: dto.identity_mode,
+          reporter_name: dto.identity_mode === 'anonymous' ? null : dto.reporter_name ?? null,
+          reporter_contact:
+            dto.identity_mode === 'anonymous' ? null : dto.reporter_contact ?? null,
+          reporter_user_id: null, // Default null; dikaitkan terpisah atas persetujuan pengguna
+          privacy_acknowledged: dto.privacy_acknowledged,
+          status: 'submitted',
+        })
+        .select()
+        .single();
 
-    if (error || !data) {
-      throw new Error(`Gagal membuat laporan: ${error?.message}`);
+      if (!error && data) {
+        report = data as Report;
+        break;
+      }
+
+      // Jika bukan unique violation, lempar langsung
+      lastError = error?.message ?? 'Unknown error';
+      if (!lastError.includes('unique') && !lastError.includes('duplicate')) {
+        throw new Error(`Gagal membuat laporan: ${lastError}`);
+      }
+      // Jika unique violation, coba lagi dengan kode baru
     }
 
-    const report = data as Report;
+    if (!report) {
+      throw new Error(`Gagal membuat laporan setelah 3 percobaan: ${lastError}`);
+    }
 
     // Catat riwayat status inisial
     try {
@@ -129,45 +151,24 @@ export class SupabaseReportRepository implements IReportRepository {
   ): Promise<Report | null> {
     if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
 
-    const current = await this.findById(id);
-    if (!current) return null;
-    const previousStatus = current.status;
+    // Gunakan RPC atomik agar update status dan audit trail selalu konsisten.
+    // Jika insert history gagal, update status juga otomatis rollback.
+    const { data, error } = await supabaseAdmin.rpc('update_report_status_with_history', {
+      p_report_id: id,
+      p_new_status: status,
+      p_changed_by_admin_id: adminId ?? null,
+      p_public_message: publicMessage ?? null,
+      p_internal_note: internalNote ?? null,
+    });
 
-    const updateData: Record<string, unknown> = {
-      status,
-      updated_at: new Date().toISOString(),
-    };
-    if (status === 'resolved' || status === 'closed') {
-      updateData.resolved_at = new Date().toISOString();
-    }
-    if (adminId) {
-      updateData.assigned_admin_id = adminId;
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from('reports')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error || !data) return null;
-
-    // Catat ke audit trail / status history
-    try {
-      await this.appendStatusHistory({
-        report_id: id,
-        changed_by_admin_id: adminId || null,
-        previous_status: previousStatus,
-        new_status: status,
-        public_message: publicMessage || null,
-        internal_note: internalNote || null,
-      });
-    } catch (e) {
-      console.warn('Gagal mencatat perubahan status history:', e);
+    if (error) {
+      if (error.message?.includes('REPORT_NOT_FOUND')) {
+        return null;
+      }
+      throw new Error(`Gagal memperbarui status laporan: ${error.message}`);
     }
 
-    return data as Report;
+    return (data as Report) ?? null;
   }
 
   async appendStatusHistory(

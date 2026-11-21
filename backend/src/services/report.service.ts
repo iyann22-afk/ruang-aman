@@ -49,21 +49,42 @@ export class ReportService {
     // 4. Attach evidence if file is present
     let hasEvidence = false;
     if (file) {
-      hasEvidence = true;
       let storagePath: string;
-      try {
-        storagePath = await uploadEvidenceToStorage(report.id, file);
-      } catch {
-        storagePath = `report-evidence-private/fallback/${report.id}/${file.originalname}`;
-      }
 
-      await repo.createEvidence({
-        report_id: report.id,
-        storage_path: storagePath,
-        original_filename: file.originalname,
-        mime_type: file.mimetype,
-        file_size_bytes: file.size,
-      });
+      // Upload ke storage — lempar error jika gagal di production
+      storagePath = await uploadEvidenceToStorage(report.id, file);
+      // uploadEvidenceToStorage sudah menangani dev fallback dan melempar error di production
+
+      // Simpan metadata evidence ke database
+      try {
+        await repo.createEvidence({
+          report_id: report.id,
+          storage_path: storagePath,
+          original_filename: file.originalname,
+          mime_type: file.mimetype,
+          file_size_bytes: file.size,
+        });
+        hasEvidence = true;
+      } catch (dbError) {
+        // Kompensasi: hapus file dari storage jika metadata DB gagal disimpan
+        // (hanya jika bukan dev fallback)
+        if (!storagePath.startsWith('local/')) {
+          try {
+            const { supabaseAdmin } = await import('../repositories/supabase/supabase.client.js');
+            if (supabaseAdmin) {
+              await supabaseAdmin.storage
+                .from('report-evidence-private')
+                .remove([storagePath]);
+            }
+          } catch {
+            // Log kompensasi gagal — tidak mempengaruhi respons error
+            console.error(`[kompensasi] Gagal menghapus file orphan: ${storagePath}`);
+          }
+        }
+        throw new Error(
+          `Gagal menyimpan metadata bukti: ${dbError instanceof Error ? dbError.message : String(dbError)}`
+        );
+      }
     }
 
     return {

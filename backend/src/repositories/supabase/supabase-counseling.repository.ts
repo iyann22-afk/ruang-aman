@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { CounselingBooking, CounselingSlot, SupportResource } from '../../types/index.js';
 import {
@@ -7,7 +8,14 @@ import {
 import { supabaseAdmin } from './supabase.client.js';
 
 function generateBookingCode(): string {
-  return `BK-${uuidv4().split('-')[0].toUpperCase()}`;
+  // Gunakan crypto.randomBytes agar kode tidak mudah ditebak
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = randomBytes(6);
+  let suffix = '';
+  for (const byte of bytes) {
+    suffix += chars[byte % chars.length];
+  }
+  return `BK-${suffix}`;
 }
 
 export class SupabaseCounselingRepository implements ICounselingRepository {
@@ -38,41 +46,37 @@ export class SupabaseCounselingRepository implements ICounselingRepository {
   async createBooking(dto: CreateBookingDTO): Promise<CounselingBooking> {
     if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
 
-    // Periksa ketersediaan slot
-    const slot = await this.findSlotById(dto.slot_id);
-    if (!slot || slot.status !== 'available') {
-      throw new Error('Slot konseling tidak tersedia');
-    }
-
     const booking_code = generateBookingCode();
 
-    // Buat booking — kolom skema 0001: booking_status (bukan status)
-    const { data: booking, error: bookingError } = await supabaseAdmin
-      .from('counseling_bookings')
-      .insert({
-        id: uuidv4(),
-        slot_id: dto.slot_id,
-        booking_code,
-        student_name: dto.student_name,
-        contact_method: dto.contact_method,
-        contact_value: dto.contact_value,
-        privacy_acknowledged: dto.privacy_acknowledged,
-        booking_status: 'confirmed',
-      })
-      .select()
-      .single();
+    // Gunakan RPC atomik untuk mencegah double booking (SELECT FOR UPDATE)
+    const { data, error } = await supabaseAdmin.rpc('book_counseling_slot', {
+      p_slot_id: dto.slot_id,
+      p_booking_code: booking_code,
+      p_student_name: dto.student_name,
+      p_contact_method: dto.contact_method,
+      p_contact_value: dto.contact_value,
+      p_privacy_acknowledged: dto.privacy_acknowledged,
+    });
 
-    if (bookingError || !booking) {
-      throw new Error(`Gagal membuat booking: ${bookingError?.message}`);
+    if (error) {
+      // Terjemahkan kode error RPC ke pesan yang ramah pengguna
+      if (error.message?.includes('SLOT_NOT_FOUND')) {
+        throw new Error('Slot konseling tidak ditemukan');
+      }
+      if (error.message?.includes('SLOT_UNAVAILABLE')) {
+        throw new Error('Slot konseling sudah tidak tersedia atau telah dipesan');
+      }
+      if (error.message?.includes('SLOT_NOT_PUBLISHED')) {
+        throw new Error('Slot konseling tidak aktif');
+      }
+      throw new Error(`Gagal membuat booking: ${error.message}`);
     }
 
-    // Update status slot menjadi 'booked'
-    await supabaseAdmin
-      .from('counseling_slots')
-      .update({ status: 'booked' })
-      .eq('id', dto.slot_id);
+    if (!data) {
+      throw new Error('Booking gagal: tidak ada data yang dikembalikan');
+    }
 
-    return booking as CounselingBooking;
+    return data as CounselingBooking;
   }
 
   async findBookingByCode(code: string): Promise<CounselingBooking | null> {

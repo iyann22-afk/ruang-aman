@@ -9,11 +9,19 @@ import React, {
 } from 'react';
 import { supabase } from '../lib/supabase';
 
+interface UserProfile {
+  id: string;
+  auth_user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
+  profile: UserProfile | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -25,6 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
   // Cek apakah user adalah admin terdaftar
   const checkAdminStatus = useCallback(async (accessToken: string) => {
@@ -46,13 +55,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Sinkronisasi profil pengguna ke backend setelah login Google berhasil.
+  // Endpoint backend melakukan upsert tanpa mengganti UUID primary key.
+  const syncUserProfile = useCallback(async (accessToken: string, authUser: User) => {
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+
+      // Ambil nama dan avatar dari metadata Google OAuth
+      const fullName =
+        authUser.user_metadata?.full_name ||
+        authUser.user_metadata?.name ||
+        null;
+      const avatarUrl =
+        authUser.user_metadata?.avatar_url ||
+        authUser.user_metadata?.picture ||
+        null;
+
+      const res = await fetch(`${apiBase}/public/profile/sync`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ full_name: fullName, avatar_url: avatarUrl }),
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        setProfile(result.profile as UserProfile);
+      }
+    } catch {
+      // Profil sync gagal tidak memblokir akses — log saja
+      console.warn('[AuthContext] Gagal sinkronisasi profil pengguna');
+    }
+  }, []);
+
   useEffect(() => {
     // Ambil session awal
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.access_token) {
+      if (session?.access_token && session.user) {
         checkAdminStatus(session.access_token);
+        syncUserProfile(session.access_token, session.user);
       }
       setLoading(false);
     });
@@ -62,10 +107,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        if (session?.access_token) {
+        if (session?.access_token && session.user) {
           await checkAdminStatus(session.access_token);
+          await syncUserProfile(session.access_token, session.user);
         } else {
           setIsAdmin(false);
+          setProfile(null);
         }
         setLoading(false);
       }
@@ -74,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [checkAdminStatus]);
+  }, [checkAdminStatus, syncUserProfile]);
 
   const signInWithGoogle = useCallback(async () => {
     const redirectTo = `${window.location.origin}/auth/callback`;
@@ -102,11 +149,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setSession(null);
     setIsAdmin(false);
+    setProfile(null);
   }, []);
 
   const value = useMemo(
-    () => ({ user, session, loading, isAdmin, signInWithGoogle, signOut }),
-    [user, session, loading, isAdmin, signInWithGoogle, signOut]
+    () => ({ user, session, loading, isAdmin, profile, signInWithGoogle, signOut }),
+    [user, session, loading, isAdmin, profile, signInWithGoogle, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
