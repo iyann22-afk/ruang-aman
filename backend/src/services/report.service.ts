@@ -213,8 +213,11 @@ export class ReportService {
     }));
   }
 
-  async getDashboardSummary() {
-    return this.getRepository().getDashboardSummary();
+  async getDashboardSummary(requestingAdmin?: Admin) {
+    // RBAC: Counselor hanya boleh menerima data dashboard untuk kasus yang ditugaskan kepada dirinya
+    const assignedAdminId =
+      requestingAdmin?.role === 'counselor' ? requestingAdmin.id : undefined;
+    return this.getRepository().getDashboardSummary(assignedAdminId);
   }
 }
 

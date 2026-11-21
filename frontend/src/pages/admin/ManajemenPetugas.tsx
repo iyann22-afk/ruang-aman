@@ -25,6 +25,8 @@ import { apiClient } from '../../services/apiClient.js';
 import { AdminPetugasItem, AdminRole } from '../../types/index.js';
 import { ToastAlert } from '../../components/feedback/ToastAlert.js';
 
+const PRIMARY_SUPER_ADMIN_ID = '7beabfb4-5d19-4c6a-85eb-ba5e8073675e';
+
 export const ManajemenPetugas: React.FC = () => {
   const { admin } = useAuth();
   const [petugasList, setPetugasList] = useState<AdminPetugasItem[]>([]);
@@ -171,10 +173,10 @@ export const ManajemenPetugas: React.FC = () => {
   };
 
   const isProtectedAdmin = (target: AdminPetugasItem) => {
-    // Akun Yandri Utama atau diri sendiri tidak boleh dideaktivasi / didemosikan sembarangan
-    const isYandri = target.email.toLowerCase().includes('yandri');
+    // Akun Super Admin utama (7beabfb4-5d19-4c6a-85eb-ba5e8073675e) atau diri sendiri
+    const isPrimarySuperAdmin = target.id === PRIMARY_SUPER_ADMIN_ID;
     const isSelf = admin?.id === target.id;
-    return isYandri || isSelf;
+    return isPrimarySuperAdmin || isSelf;
   };
 
   // Guard jika bukan super_admin
@@ -302,7 +304,7 @@ export const ManajemenPetugas: React.FC = () => {
                 </tr>
               ) : (
                 filteredList.map((item) => {
-                  const isYandri = item.email.toLowerCase().includes('yandri');
+                  const isPrimary = item.id === PRIMARY_SUPER_ADMIN_ID;
                   const isSelf = admin?.id === item.id;
                   const isLinked = Boolean(item.auth_user_id);
 
@@ -322,9 +324,9 @@ export const ManajemenPetugas: React.FC = () => {
                                   Anda
                                 </span>
                               )}
-                              {isYandri && (
+                              {isPrimary && (
                                 <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-amber-100 text-amber-800">
-                                  Utama
+                                  Super Admin Utama
                                 </span>
                               )}
                             </div>
@@ -389,9 +391,9 @@ export const ManajemenPetugas: React.FC = () => {
                               setEditingPetugas(item);
                               setNewRole(item.role);
                             }}
-                            disabled={isYandri}
+                            disabled={isPrimary}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-40 transition-colors"
-                            title={isYandri ? 'Peran Super Admin utama terkunci' : 'Ubah Peran'}
+                            title={isPrimary ? 'Peran Super Admin utama terkunci' : 'Ubah Peran'}
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>

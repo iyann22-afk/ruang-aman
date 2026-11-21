@@ -9,7 +9,7 @@ import {
 export class MockAdminRepository implements IAdminRepository {
   private admins: Admin[] = [
     {
-      id: 'a0000001-0000-0000-0000-000000000000',
+      id: '7beabfb4-5d19-4c6a-85eb-ba5e8073675e',
       auth_user_id: 'u0000000-0000-0000-0000-000000000001',
       full_name: 'Yandri Utama',
       email: 'yandri.utama@ruangaman.id',

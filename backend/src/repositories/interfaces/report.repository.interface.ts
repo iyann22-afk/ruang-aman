@@ -50,7 +50,7 @@ export interface IReportRepository {
     evidence: Omit<ReportEvidence, 'id' | 'uploaded_at'>
   ): Promise<ReportEvidence>;
   getEvidencesByReportId(reportId: string): Promise<ReportEvidence[]>;
-  getDashboardSummary(): Promise<{
+  getDashboardSummary(assignedAdminId?: string | null): Promise<{
     total_reports: number;
     new_reports: number;
     under_review: number;

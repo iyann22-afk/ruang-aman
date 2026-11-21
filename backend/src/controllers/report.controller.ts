@@ -152,9 +152,9 @@ export class ReportController {
     }
   }
 
-  async getDashboardSummary(_req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  async getDashboardSummary(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const summary = await reportService.getDashboardSummary();
+      const summary = await reportService.getDashboardSummary(req.admin);
       res.status(200).json({
         success: true,
         message: 'Ringkasan data dashboard berhasil dimuat',

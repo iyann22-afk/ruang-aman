@@ -97,13 +97,11 @@ async function authenticateWithSupabase(
       return;
     }
 
-    // Verifikasi idle session 15 menit
-    const sessionResult = await sessionService.validateAndTouch(
+    // Verifikasi idle session 15 menit (Hanya validasi — TIDAK memperbarui aktivitas)
+    const sessionResult = await sessionService.validateSession(
       token,
       admin.id,
-      verifiedUser.id,
-      req.ip,
-      req.headers['user-agent'] as string
+      verifiedUser.id
     );
 
     if (!sessionResult.valid) {
@@ -162,13 +160,11 @@ async function authenticateWithDemoToken(
     return;
   }
 
-  // Verifikasi idle session pada token demo juga
-  const sessionResult = await sessionService.validateAndTouch(
+  // Verifikasi idle session pada token demo (Hanya validasi — TIDAK memperbarui aktivitas)
+  const sessionResult = await sessionService.validateSession(
     token,
     admin.id,
-    undefined,
-    req.ip,
-    req.headers['user-agent'] as string
+    undefined
   );
 
   if (!sessionResult.valid) {

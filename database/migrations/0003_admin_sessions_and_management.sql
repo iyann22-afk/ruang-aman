@@ -38,7 +38,7 @@ CREATE POLICY "admin_sessions_no_public_access" ON admin_sessions
 -- =====================================================================
 -- 3. FUNCTION & RPC: TOUCH/CREATE ADMIN SESSION
 -- =====================================================================
--- Membuat atau memperbarui waktu aktivitas sesi petugas (heartbeat/request).
+-- Membuat atau memperbarui waktu aktivitas sesi petugas (heartbeat/login awal).
 -- Menolak pembaruan jika sesi telah idle > 15 menit atau telah di-revoke.
 CREATE OR REPLACE FUNCTION touch_admin_session(
     p_admin_id           UUID,
@@ -121,6 +121,53 @@ BEGIN
 
         RETURN v_result;
     END IF;
+END;
+$$;
+
+-- =====================================================================
+-- 4. FUNCTION & RPC: VALIDATE ADMIN SESSION (READ-ONLY CHECK)
+-- =====================================================================
+-- Memvalidasi sesi pada request API biasa TANPA memperbarui waktu aktivitas.
+CREATE OR REPLACE FUNCTION validate_admin_session(
+    p_token_hash VARCHAR(64)
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_session     RECORD;
+    v_now         TIMESTAMPTZ := NOW();
+    v_idle_limit  INTERVAL := INTERVAL '15 minutes';
+BEGIN
+    SELECT * INTO v_session
+    FROM admin_sessions
+    WHERE session_token_hash = p_token_hash;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'SESSION_NOT_FOUND: Sesi petugas tidak ditemukan'
+            USING ERRCODE = 'P0022';
+    END IF;
+
+    IF v_session.is_revoked THEN
+        RAISE EXCEPTION 'SESSION_REVOKED: Sesi petugas telah dicabut atau dinonaktifkan'
+            USING ERRCODE = 'P0020';
+    END IF;
+
+    IF (v_now - v_session.last_activity_at) > v_idle_limit THEN
+        UPDATE admin_sessions
+        SET is_revoked = TRUE
+        WHERE id = v_session.id;
+
+        RAISE EXCEPTION 'SESSION_IDLE_TIMEOUT: Sesi berakhir karena tidak ada aktivitas selama 15 menit'
+            USING ERRCODE = 'P0021';
+    END IF;
+
+    RETURN jsonb_build_object(
+        'valid', true,
+        'id', v_session.id,
+        'admin_id', v_session.admin_id,
+        'last_activity_at', v_session.last_activity_at
+    );
 END;
 $$;
 

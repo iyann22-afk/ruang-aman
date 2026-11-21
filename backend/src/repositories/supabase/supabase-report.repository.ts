@@ -255,16 +255,16 @@ export class SupabaseReportRepository implements IReportRepository {
     return (data as ReportEvidence[]) ?? [];
   }
 
-  async getDashboardSummary() {
+  async getDashboardSummary(assignedAdminId?: string | null) {
     if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
 
-    const [reports, histories, categories] = await Promise.all([
-      supabaseAdmin.from('reports').select('*', { count: 'exact' }),
-      supabaseAdmin
-        .from('report_status_histories')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10),
+    let reportsQuery = supabaseAdmin.from('reports').select('*', { count: 'exact' });
+    if (assignedAdminId) {
+      reportsQuery = reportsQuery.eq('assigned_admin_id', assignedAdminId);
+    }
+
+    const [reports, categories] = await Promise.all([
+      reportsQuery,
       supabaseAdmin.from('report_categories').select('id, name').eq('is_active', true),
     ]);
 
@@ -289,8 +289,29 @@ export class SupabaseReportRepository implements IReportRepository {
       ([category, count]) => ({ category, count })
     );
 
-    const recent_reports = allReports.slice(0, 5);
-    const recent_activities = (histories.data as ReportStatusHistory[]) ?? [];
+    // Sanitasi recent reports: lindungi identitas kasus anonim
+    const recent_reports = allReports.slice(0, 5).map((r) => ({
+      ...r,
+      reporter_name: r.identity_mode === 'anonymous' ? null : r.reporter_name,
+      reporter_contact: r.identity_mode === 'anonymous' ? null : r.reporter_contact,
+    }));
+
+    // Ambil aktivitas riwayat status yang relevan dengan kasus yang diizinkan
+    let recent_activities: ReportStatusHistory[] = [];
+    if (allReports.length > 0) {
+      const allowedReportIds = allReports.map((r) => r.id);
+      let historiesQuery = supabaseAdmin
+        .from('report_status_histories')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (assignedAdminId) {
+        historiesQuery = historiesQuery.in('report_id', allowedReportIds);
+      }
+
+      const { data: historiesData } = await historiesQuery.limit(10);
+      recent_activities = (historiesData as ReportStatusHistory[]) ?? [];
+    }
 
     return {
       total_reports,

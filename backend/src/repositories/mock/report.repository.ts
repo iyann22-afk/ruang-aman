@@ -370,7 +370,7 @@ export class MockReportRepository implements IReportRepository {
       .map((e) => ({ ...e }));
   }
 
-  async getDashboardSummary(): Promise<{
+  async getDashboardSummary(assignedAdminId?: string | null): Promise<{
     total_reports: number;
     new_reports: number;
     under_review: number;
@@ -381,18 +381,25 @@ export class MockReportRepository implements IReportRepository {
     recent_reports: Report[];
     recent_activities: ReportStatusHistory[];
   }> {
-    const total_reports = this.reports.length;
-    const new_reports = this.reports.filter((r) => r.status === 'submitted').length;
-    const under_review = this.reports.filter((r) => r.status === 'under_review' || r.status === 'need_more_info').length;
-    const referred = this.reports.filter((r) => r.status === 'referred').length;
-    const resolved = this.reports.filter((r) => r.status === 'resolved').length;
-    const closed = this.reports.filter((r) => r.status === 'closed').length;
+    // Jika assignedAdminId ditentukan (misal untuk Counselor), saring hanya kasus miliknya
+    const targetReports = assignedAdminId
+      ? this.reports.filter((r) => r.assigned_admin_id === assignedAdminId)
+      : this.reports;
+
+    const targetReportIds = new Set(targetReports.map((r) => r.id));
+
+    const total_reports = targetReports.length;
+    const new_reports = targetReports.filter((r) => r.status === 'submitted').length;
+    const under_review = targetReports.filter((r) => r.status === 'under_review' || r.status === 'need_more_info').length;
+    const referred = targetReports.filter((r) => r.status === 'referred').length;
+    const resolved = targetReports.filter((r) => r.status === 'resolved').length;
+    const closed = targetReports.filter((r) => r.status === 'closed').length;
 
     const categoryCountMap: Record<string, number> = {};
     for (const cat of this.categories) {
       categoryCountMap[cat.name] = 0;
     }
-    for (const r of this.reports) {
+    for (const r of targetReports) {
       const cat = this.categories.find((c) => c.id === r.category_id);
       const name = cat ? cat.name : 'Lainnya';
       categoryCountMap[name] = (categoryCountMap[name] || 0) + 1;
@@ -403,8 +410,18 @@ export class MockReportRepository implements IReportRepository {
       count,
     }));
 
-    const recent_reports = this.reports.slice(0, 5).map((r) => ({ ...r }));
-    const recent_activities = this.histories.slice(0, 5).map((h) => ({ ...h }));
+    // Sanitasi recent_reports: pastikan tidak membocorkan identitas untuk laporan anonim
+    const recent_reports = targetReports.slice(0, 5).map((r) => ({
+      ...r,
+      reporter_name: r.identity_mode === 'anonymous' ? null : r.reporter_name,
+      reporter_contact: r.identity_mode === 'anonymous' ? null : r.reporter_contact,
+    }));
+
+    // Saring riwayat aktivitas hanya untuk laporan yang diizinkan
+    const recent_activities = this.histories
+      .filter((h) => targetReportIds.has(h.report_id))
+      .slice(0, 5)
+      .map((h) => ({ ...h }));
 
     return {
       total_reports,

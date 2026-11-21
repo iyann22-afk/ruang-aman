@@ -7,6 +7,9 @@ import {
 import { getRepositoriesSync } from '../repositories/repository.factory.js';
 import { Admin, AdminRole } from '../types/index.js';
 
+// ID unik dan stabil dari Super Admin utama di database
+export const PRIMARY_SUPER_ADMIN_ID = '7beabfb4-5d19-4c6a-85eb-ba5e8073675e';
+
 export class AdminService {
   constructor(private repo?: IAdminRepository) {}
 
@@ -116,9 +119,9 @@ export class AdminService {
       throw err;
     }
 
-    // Proteksi: Super admin utama (Yandri Utama) atau diri sendiri tidak boleh didemote secara sembarangan
-    if (target.email.toLowerCase().includes('yandri') && newRole !== 'super_admin') {
-      const err = new Error('Kewenangan Super Admin utama tidak dapat diubah.');
+    // Proteksi: Super admin utama (PRIMARY_SUPER_ADMIN_ID) tidak boleh diubah/diturunkan perannya
+    if (target.id === PRIMARY_SUPER_ADMIN_ID && newRole !== 'super_admin') {
+      const err = new Error('Kewenangan Super Admin utama tidak dapat diubah atau diturunkan.');
       (err as any).statusCode = 400;
       throw err;
     }
@@ -141,15 +144,16 @@ export class AdminService {
       throw err;
     }
 
-    // Proteksi: Tidak boleh menonaktifkan akun sendiri atau Yandri Utama
-    if (target.id === currentAdmin.id && !is_active) {
-      const err = new Error('Anda tidak dapat menonaktifkan akun Anda sendiri.');
+    // Proteksi: Super admin utama (PRIMARY_SUPER_ADMIN_ID) tidak dapat dinonaktifkan
+    if (target.id === PRIMARY_SUPER_ADMIN_ID && !is_active) {
+      const err = new Error('Super Admin utama tidak dapat dinonaktifkan.');
       (err as any).statusCode = 400;
       throw err;
     }
 
-    if (target.email.toLowerCase().includes('yandri') && !is_active) {
-      const err = new Error('Super Admin utama tidak dapat dinonaktifkan.');
+    // Proteksi: Tidak boleh menonaktifkan akun sendiri
+    if (target.id === currentAdmin.id && !is_active) {
+      const err = new Error('Anda tidak dapat menonaktifkan akun Anda sendiri.');
       (err as any).statusCode = 400;
       throw err;
     }
@@ -200,8 +204,8 @@ export class AdminService {
         ];
       case 'counselor':
         return [
-          'all_reports_read',
-          'view_audit_trail',
+          'assigned_reports_read',
+          'assigned_reports_write',
           'manage_counseling',
         ];
       default:

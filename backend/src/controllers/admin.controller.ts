@@ -43,8 +43,8 @@ export class AdminController {
           return;
         }
 
-        // Touch session
-        await sessionService.validateAndTouch(token, admin.id, undefined, req.ip, req.headers['user-agent'] as string);
+        // Touch session pada login/verify
+        await sessionService.touchSession(token, admin.id, undefined, req.ip, req.headers['user-agent'] as string);
 
         res.json({
           success: true,
@@ -70,8 +70,8 @@ export class AdminController {
       // 3. Verifikasi hak akses admin & tautkan akun jika email cocok (Account Linking aman)
       const admin = await adminService.verifyAndLinkAdmin(user.id, user.email || '');
 
-      // 4. Catat dan perbarui sesi di session tracker
-      const sessionResult = await sessionService.validateAndTouch(
+      // 4. Catat dan inisialisasi/perbarui sesi aktif via touchSession
+      const sessionResult = await sessionService.touchSession(
         token,
         admin.id,
         user.id,
@@ -210,7 +210,7 @@ export class AdminController {
       const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : '';
 
       if (token && req.admin) {
-        const result = await sessionService.validateAndTouch(
+        const result = await sessionService.touchSession(
           token,
           req.admin.id,
           req.admin.auth_user_id || undefined,
@@ -226,14 +226,20 @@ export class AdminController {
           });
           return;
         }
+
+        res.status(200).json({
+          success: true,
+          message: 'Sesi aktif diperbarui',
+          data: {
+            last_activity_at: result.lastActivityAt || new Date().toISOString(),
+          },
+        });
+        return;
       }
 
-      res.status(200).json({
-        success: true,
-        message: 'Sesi aktif diperbarui',
-        data: {
-          last_activity_at: new Date().toISOString(),
-        },
+      res.status(401).json({
+        success: false,
+        message: 'Token atau data admin tidak valid',
       });
     } catch (err) {
       next(err);
@@ -246,7 +252,7 @@ export class AdminController {
       const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : '';
 
       if (token) {
-        await sessionService.revokeSession(token);
+        await sessionService.revokeSession(token, req.admin?.id, req.admin?.auth_user_id || undefined);
       }
 
       res.status(200).json({
