@@ -138,13 +138,26 @@ export interface CounselingBookingResult {
   is_simulation: boolean;
 }
 
+export type AdminRole = 'super_admin' | 'case_manager' | 'counselor';
+
 export interface AdminProfile {
   id: string;
   full_name: string;
   email: string;
-  role: 'super_admin' | 'case_manager' | 'counselor';
+  role: AdminRole;
   is_active: boolean;
   permissions: string[];
+}
+
+export interface AdminPetugasItem {
+  id: string;
+  auth_user_id: string | null;
+  full_name: string;
+  email: string;
+  role: AdminRole;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DashboardSummary {

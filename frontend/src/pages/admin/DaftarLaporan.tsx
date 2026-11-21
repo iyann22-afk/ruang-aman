@@ -8,13 +8,16 @@ import {
   RefreshCw,
   Search,
   Shield,
+  UserCheck,
 } from 'lucide-react';
 import { apiClient } from '../../services/apiClient.js';
 import { AdminReportListItem, ReportCategory } from '../../types/index.js';
 import { StatusBadge } from '../../components/common/StatusBadge.js';
 import { IdentityBadge } from '../../components/common/IdentityBadge.js';
+import { useAuth } from '../../contexts/AuthContext.js';
 
 export const DaftarLaporan: React.FC = () => {
+  const { admin } = useAuth();
   const [reports, setReports] = useState<AdminReportListItem[]>([]);
   const [categories, setCategories] = useState<ReportCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,9 +62,13 @@ export const DaftarLaporan: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-[#17324D] tracking-tight">Daftar Seluruh Laporan</h1>
+          <h1 className="text-2xl font-black text-[#17324D] tracking-tight">
+            {admin?.role === 'counselor' ? 'Laporan Ditugaskan kepada Anda' : 'Daftar Seluruh Laporan'}
+          </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Manajemen verifikasi kasus, pengalihan investigasi, dan sesi konseling sekolah.
+            {admin?.role === 'counselor'
+              ? 'Anda bertindak sebagai Guru BK / Konselor. Hanya laporan yang didelegasikan khusus kepada Anda yang ditampilkan demi kerahasiaan kasus.'
+              : 'Manajemen verifikasi kasus, pengalihan investigasi, dan sesi konseling sekolah.'}
           </p>
         </div>
 
@@ -74,6 +81,15 @@ export const DaftarLaporan: React.FC = () => {
           <span>Muat Ulang</span>
         </button>
       </div>
+
+      {admin?.role === 'counselor' && (
+        <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 text-xs text-purple-900 flex items-center gap-2.5">
+          <UserCheck className="w-4 h-4 text-purple-600 shrink-0" />
+          <span>
+            <strong>Hak Akses Terbatas (Konselor):</strong> Anda hanya berwenang melihat laporan kasus yang ditugaskan kepada Anda. Laporan lain diproteksi demi perlindungan privasi.
+          </span>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-4">

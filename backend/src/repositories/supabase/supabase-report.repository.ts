@@ -128,6 +128,7 @@ export class SupabaseReportRepository implements IReportRepository {
     if (filters.status) query = query.eq('status', filters.status);
     if (filters.category_id) query = query.eq('category_id', filters.category_id);
     if (filters.identity_mode) query = query.eq('identity_mode', filters.identity_mode);
+    if (filters.assigned_admin_id) query = query.eq('assigned_admin_id', filters.assigned_admin_id);
     if (filters.search) {
       query = query.or(
         `tracking_code.ilike.%${filters.search}%,incident_location.ilike.%${filters.search}%`

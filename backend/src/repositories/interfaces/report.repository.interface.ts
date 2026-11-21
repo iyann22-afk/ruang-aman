@@ -21,6 +21,7 @@ export interface ReportFilterOptions {
   status?: ReportStatus;
   category_id?: string;
   identity_mode?: 'anonymous' | 'identified';
+  assigned_admin_id?: string;
   search?: string;
   page?: number;
   limit?: number;

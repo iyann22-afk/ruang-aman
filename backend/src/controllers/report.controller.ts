@@ -22,7 +22,7 @@ export class ReportController {
       const result = await reportService.submitReport(req.body, file);
       res.status(201).json({
         success: true,
-        message: 'Laporan Anda telah berhasil dikirim dan dienkripsi dengan aman.',
+        message: 'Laporan Anda telah berhasil dikirim dan disimpan dengan aman dalam sistem terlindungi.',
         data: result,
       });
     } catch (err) {
@@ -33,14 +33,17 @@ export class ReportController {
   async getAdminReports(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const { status, category_id, identity_mode, search, page, limit } = req.query;
-      const result = await reportService.getAdminReportList({
-        status: status as any,
-        category_id: category_id as string,
-        identity_mode: identity_mode as any,
-        search: search as string,
-        page: page ? parseInt(page as string, 10) : 1,
-        limit: limit ? parseInt(limit as string, 10) : 50,
-      });
+      const result = await reportService.getAdminReportList(
+        {
+          status: status as any,
+          category_id: category_id as string,
+          identity_mode: identity_mode as any,
+          search: search as string,
+          page: page ? parseInt(page as string, 10) : 1,
+          limit: limit ? parseInt(limit as string, 10) : 50,
+        },
+        req.admin
+      );
 
       res.status(200).json({
         success: true,
@@ -55,7 +58,7 @@ export class ReportController {
   async getAdminReportDetail(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-      const detail = await reportService.getAdminReportDetail(id);
+      const detail = await reportService.getAdminReportDetail(id, req.admin);
       if (!detail) {
         res.status(404).json({
           success: false,
@@ -69,8 +72,12 @@ export class ReportController {
         message: 'Detail laporan berhasil diambil',
         data: detail,
       });
-    } catch (err) {
-      next(err);
+    } catch (err: any) {
+      const statusCode = err.statusCode || 500;
+      res.status(statusCode).json({
+        success: false,
+        message: err.message || 'Terjadi kesalahan saat memuat detail laporan',
+      });
     }
   }
 
@@ -78,7 +85,7 @@ export class ReportController {
     try {
       const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
       const evidenceId = Array.isArray(req.params.evidenceId) ? req.params.evidenceId[0] : req.params.evidenceId;
-      const url = await reportService.getEvidenceSignedUrl(id, evidenceId);
+      const url = await reportService.getEvidenceSignedUrl(id, evidenceId, req.admin);
       if (!url) {
         res.status(404).json({
           success: false,
@@ -92,8 +99,12 @@ export class ReportController {
         message: 'Signed URL berhasil dibuat',
         data: { signed_url: url },
       });
-    } catch (err) {
-      next(err);
+    } catch (err: any) {
+      const statusCode = err.statusCode || 500;
+      res.status(statusCode).json({
+        success: false,
+        message: err.message || 'Gagal membuat signed URL',
+      });
     }
   }
 
@@ -108,7 +119,8 @@ export class ReportController {
         status,
         adminId,
         public_message,
-        internal_note
+        internal_note,
+        req.admin
       );
 
       res.status(200).json({
@@ -116,8 +128,12 @@ export class ReportController {
         message: 'Status laporan berhasil diperbarui',
         data: updated,
       });
-    } catch (err) {
-      next(err);
+    } catch (err: any) {
+      const statusCode = err.statusCode || 500;
+      res.status(statusCode).json({
+        success: false,
+        message: err.message || 'Gagal memperbarui status laporan',
+      });
     }
   }
 

@@ -1,22 +1,19 @@
 import { NextFunction, Request, Response } from 'express';
+import { adminService } from '../services/admin.service.js';
+import { sessionService } from '../services/session.service.js';
 import { Admin, AdminRole } from '../types/index.js';
 
 export interface AuthenticatedRequest extends Request {
   admin?: Admin;
 }
 
-const useSupabase =
-  process.env.NODE_ENV === 'production' || process.env.USE_SUPABASE === 'true';
-
 /**
- * Middleware Autentikasi Admin
+ * Middleware Autentikasi Admin & Verifikasi Sesi Idle 15 Menit
  *
- * Production (USE_SUPABASE=true):
- *   - Verifikasi Bearer token menggunakan Supabase Auth
- *   - Cek tabel admins: auth_user_id match + is_active=true + role valid
- *
- * Development (default):
- *   - Fallback ke demo-token-<role>-<id> (Week 2 compatibility)
+ * 1. Menerima Bearer token dari header Authorization.
+ * 2. Membedakan token Supabase (JWT) atau token demo (demo-token-*).
+ * 3. Memverifikasi hak akses petugas aktif.
+ * 4. Memverifikasi timeout idle 15 menit (menolak jika tidak aktif > 15 menit).
  */
 export const authenticateAdmin = async (
   req: AuthenticatedRequest,
@@ -35,10 +32,11 @@ export const authenticateAdmin = async (
 
   const token = authHeader.split(' ')[1];
 
-  if (useSupabase) {
-    await authenticateWithSupabase(token, req, res, next);
-  } else {
+  // Gunakan demo token jika berformat demo-token-* (khusus dev/testing)
+  if (token.startsWith('demo-token-')) {
     await authenticateWithDemoToken(token, req, res, next);
+  } else {
+    await authenticateWithSupabase(token, req, res, next);
   }
 };
 
@@ -53,7 +51,6 @@ async function authenticateWithSupabase(
     const { verifySupabaseToken } = await import(
       '../repositories/supabase/supabase.client.js'
     );
-    const { getRepositories } = await import('../repositories/repository.factory.js');
 
     const verifiedUser = await verifySupabaseToken(token);
     if (!verifiedUser) {
@@ -64,18 +61,17 @@ async function authenticateWithSupabase(
       return;
     }
 
-    const { adminRepository } = await getRepositories();
-
-    // findByAuthUserId tersedia di SupabaseAdminRepository
-    // Jika menggunakan IAdminRepository standar, cast ke extended interface
-    const extendedRepo = adminRepository as {
-      findByAuthUserId?: (id: string) => Promise<Admin | null>;
-      findById: (id: string) => Promise<Admin | null>;
-    };
-
+    // Cari dan tautkan akun petugas jika email cocok
     let admin: Admin | null = null;
-    if (extendedRepo.findByAuthUserId) {
-      admin = await extendedRepo.findByAuthUserId(verifiedUser.id);
+    try {
+      admin = await adminService.verifyAndLinkAdmin(verifiedUser.id, verifiedUser.email || '');
+    } catch (linkErr: any) {
+      res.status(linkErr.statusCode || 403).json({
+        success: false,
+        message: linkErr.message || 'Bukan petugas terdaftar',
+        errors: [{ message: linkErr.message }],
+      });
+      return;
     }
 
     if (!admin || !admin.is_active) {
@@ -101,6 +97,24 @@ async function authenticateWithSupabase(
       return;
     }
 
+    // Verifikasi idle session 15 menit
+    const sessionResult = await sessionService.validateAndTouch(
+      token,
+      admin.id,
+      verifiedUser.id,
+      req.ip,
+      req.headers['user-agent'] as string
+    );
+
+    if (!sessionResult.valid) {
+      res.status(401).json({
+        success: false,
+        code: sessionResult.code,
+        message: sessionResult.message || 'Sesi telah berakhir atau dicabut.',
+      });
+      return;
+    }
+
     req.admin = admin;
     next();
   } catch (err) {
@@ -118,14 +132,6 @@ async function authenticateWithDemoToken(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  if (!token.startsWith('demo-token-')) {
-    res.status(401).json({
-      success: false,
-      message: 'Token tidak valid. Di mode development gunakan demo-token.',
-    });
-    return;
-  }
-
   const parts = token.split('-');
   if (parts.length < 4) {
     res.status(401).json({
@@ -152,6 +158,24 @@ async function authenticateWithDemoToken(
     res.status(401).json({
       success: false,
       message: 'Sesi akun petugas tidak aktif atau telah dinonaktifkan',
+    });
+    return;
+  }
+
+  // Verifikasi idle session pada token demo juga
+  const sessionResult = await sessionService.validateAndTouch(
+    token,
+    admin.id,
+    undefined,
+    req.ip,
+    req.headers['user-agent'] as string
+  );
+
+  if (!sessionResult.valid) {
+    res.status(401).json({
+      success: false,
+      code: sessionResult.code,
+      message: sessionResult.message || 'Sesi Anda telah berakhir.',
     });
     return;
   }

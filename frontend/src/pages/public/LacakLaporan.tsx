@@ -97,7 +97,7 @@ export const LacakLaporan: React.FC = () => {
           <span>Format: RA-YYYY-XXXXXX</span>
           <span className="flex items-center gap-1 text-[#0F9F91]">
             <Lock className="w-3 h-3" />
-            <span>Pencarian Terenkripsi</span>
+            <span>Pencarian Aman &amp; Terlindungi</span>
           </span>
         </div>
       </div>

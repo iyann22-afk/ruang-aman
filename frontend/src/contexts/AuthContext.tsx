@@ -8,6 +8,8 @@ import React, {
   useState,
 } from 'react';
 import { supabase } from '../lib/supabase';
+import { AdminProfile } from '../types/index';
+import { apiClient } from '../services/apiClient';
 
 interface UserProfile {
   id: string;
@@ -21,9 +23,12 @@ interface AuthContextValue {
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
+  admin: AdminProfile | null;
+  adminLoading: boolean;
   profile: UserProfile | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  refreshAdmin: () => Promise<AdminProfile | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -33,25 +38,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [admin, setAdmin] = useState<AdminProfile | null>(null);
+  const [adminLoading, setAdminLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  // Cek apakah user adalah admin terdaftar
-  const checkAdminStatus = useCallback(async (accessToken: string) => {
+  // Cek apakah user adalah admin terdaftar & aktif
+  const checkAdminStatus = useCallback(async (accessToken?: string): Promise<AdminProfile | null> => {
+    setAdminLoading(true);
     try {
+      // 1. Cek token Supabase jika ada
+      let token = accessToken;
+      if (!token) {
+        const { data } = await supabase.auth.getSession();
+        token = data.session?.access_token;
+      }
+
+      // 2. Jika tidak ada Supabase token, cek apakah ada token demo (development)
+      if (!token) {
+        const demoToken = localStorage.getItem('ruangaman_admin_token');
+        if (demoToken) {
+          try {
+            const profileData = await apiClient.getAdminProfile();
+            setAdmin(profileData);
+            setIsAdmin(true);
+            return profileData;
+          } catch {
+            localStorage.removeItem('ruangaman_admin_token');
+            setAdmin(null);
+            setIsAdmin(false);
+            return null;
+          }
+        }
+        setAdmin(null);
+        setIsAdmin(false);
+        return null;
+      }
+
+      // 3. Verifikasi token Supabase ke endpoint backend /admin/auth/verify
       const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
       const res = await fetch(`${apiBase}/admin/auth/verify`, {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${token}`,
         },
       });
+
       if (res.ok) {
+        const json = await res.json();
+        const adminData: AdminProfile = {
+          id: json.admin.id,
+          full_name: json.admin.full_name,
+          email: json.admin.email,
+          role: json.admin.role,
+          is_active: json.admin.is_active,
+          permissions: json.admin.permissions || [],
+        };
         setIsAdmin(true);
+        setAdmin(adminData);
+        return adminData;
       } else {
         setIsAdmin(false);
+        setAdmin(null);
+        return null;
       }
-    } catch {
+    } catch (err) {
+      console.warn('[AuthContext] Gagal verifikasi status admin:', err);
       setIsAdmin(false);
+      setAdmin(null);
+      return null;
+    } finally {
+      setAdminLoading(false);
     }
   }, []);
 
@@ -85,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(result.profile as UserProfile);
       }
     } catch {
-      // Profil sync gagal tidak memblokir akses — log saja
+      // Profil sync gagal tidak memblokir akses
       console.warn('[AuthContext] Gagal sinkronisasi profil pengguna');
     }
   }, []);
@@ -98,6 +154,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.access_token && session.user) {
         checkAdminStatus(session.access_token);
         syncUserProfile(session.access_token, session.user);
+      } else {
+        // Cek apakah ada demo token
+        checkAdminStatus();
       }
       setLoading(false);
     });
@@ -111,8 +170,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await checkAdminStatus(session.access_token);
           await syncUserProfile(session.access_token, session.user);
         } else {
-          setIsAdmin(false);
-          setProfile(null);
+          // Bila session berakhir
+          const demoToken = localStorage.getItem('ruangaman_admin_token');
+          if (!demoToken) {
+            setIsAdmin(false);
+            setAdmin(null);
+            setProfile(null);
+          }
         }
         setLoading(false);
       }
@@ -142,19 +206,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('[AuthContext] Sign-out error:', error.message);
+    try {
+      await apiClient.logoutAdmin().catch(() => {});
+    } catch {
+      // Abaikan error saat memanggil backend logout
     }
+    localStorage.removeItem('ruangaman_admin_token');
+    localStorage.removeItem('ruangaman_admin_last_activity');
+    sessionStorage.removeItem('auth_return_to');
+
+    try {
+      await supabase.auth.signOut();
+    } catch (err: any) {
+      console.error('[AuthContext] Sign-out error:', err.message);
+    }
+
     setUser(null);
     setSession(null);
     setIsAdmin(false);
+    setAdmin(null);
     setProfile(null);
   }, []);
 
+  const refreshAdmin = useCallback(async () => {
+    return checkAdminStatus();
+  }, [checkAdminStatus]);
+
   const value = useMemo(
-    () => ({ user, session, loading, isAdmin, profile, signInWithGoogle, signOut }),
-    [user, session, loading, isAdmin, profile, signInWithGoogle, signOut]
+    () => ({
+      user,
+      session,
+      loading,
+      isAdmin,
+      admin,
+      adminLoading,
+      profile,
+      signInWithGoogle,
+      signOut,
+      refreshAdmin,
+    }),
+    [user, session, loading, isAdmin, admin, adminLoading, profile, signInWithGoogle, signOut, refreshAdmin]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

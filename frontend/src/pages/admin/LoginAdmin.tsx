@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   KeyRound,
@@ -8,6 +8,8 @@ import {
   Shield,
   ShieldAlert,
   Sparkles,
+  AlertTriangle,
+  Clock,
 } from 'lucide-react';
 import { apiClient } from '../../services/apiClient.js';
 import { ToastAlert } from '../../components/feedback/ToastAlert.js';
@@ -19,12 +21,56 @@ const isDemoEnabled =
 
 export const LoginAdmin: React.FC = () => {
   const navigate = useNavigate();
-  const { signInWithGoogle } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { signInWithGoogle, isAdmin } = useAuth();
   const [email, setEmail] = useState(isDemoEnabled ? 'admin@ruangaman.id' : '');
   const [password, setPassword] = useState(isDemoEnabled ? 'PasswordDemo123!' : '');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ type: 'warning' | 'error' | 'info'; title: string; message: string } | null>(null);
+
+  // Periksa apakah ada error/notice dari query params (misal auto-logout atau bukan petugas)
+  useEffect(() => {
+    const errParam = searchParams.get('error');
+    if (errParam === 'idle_timeout') {
+      setNotice({
+        type: 'warning',
+        title: 'Sesi Berakhir Otomatis (15 Menit Idle)',
+        message: 'Demi melindungi kerahasiaan dan privasi data korban, sesi Anda telah ditutup secara otomatis karena tidak ada aktivitas selama 15 menit. Silakan masuk kembali.',
+      });
+    } else if (errParam === 'not_registered') {
+      setNotice({
+        type: 'error',
+        title: 'Akses Ditolak: Bukan Petugas Terdaftar',
+        message: 'Akun Google Anda belum terdaftar sebagai petugas aktif RUANGAMAN. Akses hanya diberikan kepada petugas Satgas PPKSP dan Guru BK yang telah ditunjuk oleh Super Admin.',
+      });
+    } else if (errParam === 'inactive') {
+      setNotice({
+        type: 'error',
+        title: 'Akun Petugas Nonaktif',
+        message: 'Akun petugas Anda telah dinonaktifkan oleh Super Admin. Silakan hubungi koordinator Satgas jika Anda memerlukan pemulihan akses.',
+      });
+    } else if (errParam === 'session_expired') {
+      setNotice({
+        type: 'warning',
+        title: 'Sesi Kedaluwarsa',
+        message: 'Sesi autentikasi Anda telah kedaluwarsa. Silakan masuk kembali.',
+      });
+    } else if (errParam === 'auth_failed') {
+      setNotice({
+        type: 'error',
+        title: 'Autentikasi Google Gagal',
+        message: 'Gagal melakukan verifikasi akun dengan Google. Silakan coba kembali.',
+      });
+    } else if (errParam === 'verify_error') {
+      setNotice({
+        type: 'error',
+        title: 'Verifikasi Gagal',
+        message: 'Gagal menghubungi server verifikasi petugas. Pastikan koneksi internet stabil dan coba kembali.',
+      });
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +79,7 @@ export const LoginAdmin: React.FC = () => {
     try {
       const res = await apiClient.adminLogin(email, password);
       localStorage.setItem('ruangaman_admin_token', res.token);
+      localStorage.setItem('ruangaman_admin_last_activity', Date.now().toString());
       navigate('/admin/dashboard');
     } catch (err: any) {
       setError(err.message || 'Login gagal. Periksa kembali email dan password Anda.');
@@ -44,6 +91,7 @@ export const LoginAdmin: React.FC = () => {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     setError(null);
+    setNotice(null);
     try {
       sessionStorage.setItem('auth_return_to', '/admin/dashboard');
       await signInWithGoogle();
@@ -75,6 +123,24 @@ export const LoginAdmin: React.FC = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10">
         <div className="bg-slate-800/90 backdrop-blur-xl py-8 px-6 sm:px-10 rounded-3xl border border-slate-700/80 shadow-2xl space-y-6">
+
+          {notice && (
+            <div className={`p-4 rounded-2xl border text-xs space-y-1.5 ${
+              notice.type === 'warning'
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                : 'bg-rose-500/10 border-rose-500/30 text-rose-200'
+            }`}>
+              <div className="flex items-center gap-2 font-bold">
+                {notice.type === 'warning' ? (
+                  <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                ) : (
+                  <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+                )}
+                <span>{notice.title}</span>
+              </div>
+              <p className="text-[11px] leading-relaxed opacity-90">{notice.message}</p>
+            </div>
+          )}
 
           {error && (
             <ToastAlert type="error" title="Akses Gagal" message={error} onClose={() => setError(null)} />

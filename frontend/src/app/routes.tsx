@@ -21,6 +21,7 @@ import { DaftarLaporan } from '../pages/admin/DaftarLaporan.js';
 import { DetailLaporan } from '../pages/admin/DetailLaporan.js';
 import { RiwayatStatus } from '../pages/admin/RiwayatStatus.js';
 import { ProfilAdmin } from '../pages/admin/ProfilAdmin.js';
+import { ManajemenPetugas } from '../pages/admin/ManajemenPetugas.js';
 
 export const router = createBrowserRouter([
   // Public Route Group with PublicLayout
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
       { path: 'laporan', element: <DaftarLaporan /> },
       { path: 'laporan/:id', element: <DetailLaporan /> },
       { path: 'riwayat-status', element: <RiwayatStatus /> },
+      { path: 'petugas', element: <ManajemenPetugas /> },
       { path: 'profil', element: <ProfilAdmin /> },
     ],
   },

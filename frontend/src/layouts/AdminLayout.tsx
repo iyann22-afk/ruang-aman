@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   Activity,
+  AlertTriangle,
   ArrowLeft,
+  Clock,
   FileSpreadsheet,
   History,
   LayoutDashboard,
@@ -15,61 +17,240 @@ import {
 } from 'lucide-react';
 import { AdminProfile } from '../types/index.js';
 import { apiClient } from '../services/apiClient.js';
+import { useAuth } from '../contexts/AuthContext.js';
+
+// Konstanta waktu sesi idle 15 menit
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 menit
+const WARNING_TIMEOUT_MS = 13 * 60 * 1000; // 13 menit (2 menit sebelum auto logout)
+const HEARTBEAT_INTERVAL_MS = 60 * 1000; // Heartbeat ke backend maksimal 1x / menit saat aktif
 
 export const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
-  const [admin, setAdmin] = useState<AdminProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { admin, isAdmin, loading, adminLoading, signOut, refreshAdmin } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState(120);
 
+  const lastHeartbeatRef = useRef<number>(Date.now());
+
+  // 1. Inisialisasi dan pengawasan autentikasi admin
   useEffect(() => {
-    const token = localStorage.getItem('ruangaman_admin_token');
-    if (!token) {
-      navigate('/admin/login', { replace: true });
+    if (loading || adminLoading) return;
+
+    // Jika belum login atau bukan admin terverifikasi
+    if (!isAdmin || !admin) {
+      // Cek apakah ada demo token di localStorage
+      const demoToken = localStorage.getItem('ruangaman_admin_token');
+      if (!demoToken) {
+        navigate('/admin/login', { replace: true });
+        return;
+      }
+    }
+
+    // Jika admin terdaftar tapi statusnya dinonaktifkan
+    if (admin && !admin.is_active) {
+      signOut().finally(() => {
+        navigate('/admin/login?error=inactive', { replace: true });
+      });
       return;
     }
 
-    // Load admin profile
-    apiClient
-      .getAdminProfile()
-      .then((profile) => {
-        setAdmin(profile);
-      })
-      .catch(() => {
-        // Token invalid or expired
-        localStorage.removeItem('ruangaman_admin_token');
-        navigate('/admin/login', { replace: true });
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [navigate]);
+    // Pastikan timestamp aktivitas awal tercatat
+    if (!localStorage.getItem('ruangaman_admin_last_activity')) {
+      localStorage.setItem('ruangaman_admin_last_activity', Date.now().toString());
+    }
+  }, [admin, isAdmin, loading, adminLoading, navigate, signOut]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('ruangaman_admin_token');
+  // 2. Listener interaksi pengguna aktif (click, keydown, scroll, touch)
+  // Tidak menganggap polling atau background timer sebagai aktivitas pengguna
+  useEffect(() => {
+    const handleUserActivity = () => {
+      const now = Date.now();
+      localStorage.setItem('ruangaman_admin_last_activity', now.toString());
+
+      // Kirim heartbeat ke backend secara throttled (maksimal 1x per menit)
+      if (now - lastHeartbeatRef.current > HEARTBEAT_INTERVAL_MS) {
+        lastHeartbeatRef.current = now;
+        apiClient.sendHeartbeat().catch(() => {});
+      }
+    };
+
+    const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll'];
+    activityEvents.forEach((evt) => {
+      window.addEventListener(evt, handleUserActivity, { passive: true });
+    });
+
+    return () => {
+      activityEvents.forEach((evt) => {
+        window.removeEventListener(evt, handleUserActivity);
+      });
+    };
+  }, []);
+
+  // 3. Timer pengawasan idle: Peringatan menit ke-13 dan Auto-Logout menit ke-15
+  useEffect(() => {
+    const checkIdleState = () => {
+      const raw = localStorage.getItem('ruangaman_admin_last_activity');
+      const lastActivity = raw ? parseInt(raw, 10) : Date.now();
+      const now = Date.now();
+      const elapsed = now - lastActivity;
+
+      if (elapsed >= IDLE_TIMEOUT_MS) {
+        // Menit ke-15 idle tercapai -> auto logout
+        setShowWarningModal(false);
+        handleIdleLogout();
+      } else if (elapsed >= WARNING_TIMEOUT_MS) {
+        // Menit ke-13 tercapai -> tampilkan modal peringatan dengan sisa detik
+        const remaining = Math.max(0, Math.ceil((IDLE_TIMEOUT_MS - elapsed) / 1000));
+        setCountdownSeconds(remaining);
+        setShowWarningModal(true);
+      } else {
+        if (showWarningModal) {
+          setShowWarningModal(false);
+        }
+      }
+    };
+
+    const timer = setInterval(checkIdleState, 1000);
+    return () => clearInterval(timer);
+  }, [showWarningModal]);
+
+  // 4. Sinkronisasi lintas tab browser (StorageEvent)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'ruangaman_admin_last_activity' && e.newValue) {
+        const last = parseInt(e.newValue, 10);
+        const elapsed = Date.now() - last;
+        if (elapsed < WARNING_TIMEOUT_MS) {
+          setShowWarningModal(false);
+        }
+      }
+      if (e.key === 'ruangaman_admin_token' && e.newValue === null && !isAdmin) {
+        navigate('/admin/login', { replace: true });
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [navigate, isAdmin]);
+
+  // Handler auto-logout karena idle
+  const handleIdleLogout = async () => {
+    try {
+      await signOut();
+    } catch {
+      // ignore
+    }
+    navigate('/admin/login?error=idle_timeout', { replace: true });
+  };
+
+  // Handler tombol "Tetap Masuk" pada modal peringatan
+  const handleStayLoggedIn = () => {
+    const now = Date.now();
+    localStorage.setItem('ruangaman_admin_last_activity', now.toString());
+    lastHeartbeatRef.current = now;
+    setShowWarningModal(false);
+    apiClient.sendHeartbeat().catch(() => {});
+  };
+
+  // Handler logout manual
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch {
+      // ignore
+    }
     navigate('/admin/login');
   };
 
+  const getRoleLabel = (role?: string) => {
+    switch (role) {
+      case 'super_admin':
+        return 'Super Admin';
+      case 'case_manager':
+        return 'Case Manager';
+      case 'counselor':
+        return 'Guru BK';
+      default:
+        return role || 'Petugas';
+    }
+  };
+
+  // Menu navigasi dinamis berdasarkan role
   const menuItems = [
     { name: 'Dashboard', to: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Daftar Laporan', to: '/admin/laporan', icon: FileSpreadsheet },
-    { name: 'Riwayat Status', to: '/admin/riwayat-status', icon: History },
+    ...(admin?.role !== 'counselor'
+      ? [{ name: 'Riwayat Status', to: '/admin/riwayat-status', icon: History }]
+      : []),
+    ...(admin?.role === 'super_admin'
+      ? [{ name: 'Manajemen Petugas', to: '/admin/petugas', icon: Shield }]
+      : []),
     { name: 'Profil Petugas', to: '/admin/profil', icon: User },
   ];
 
-  if (loading) {
+  if (loading || adminLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-[#0F9F91] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-medium text-slate-400">Memverifikasi Sesi Petugas...</p>
+          <p className="text-sm font-medium text-slate-400">Memverifikasi Hak Akses Petugas...</p>
         </div>
       </div>
     );
   }
 
+  const minutes = Math.floor(countdownSeconds / 60);
+  const seconds = countdownSeconds % 60;
+  const formattedCountdown = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
   return (
-    <div className="min-h-screen flex bg-slate-100/80 text-[#17324D]">
+    <div className="min-h-screen flex bg-slate-100/80 text-[#17324D] relative">
+      {/* === MODAL PERINGATAN IDLE TIMEOUT 13 MENIT === */}
+      {showWarningModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center space-y-5">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+              <Clock className="w-8 h-8 animate-pulse" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                Sesi Anda Hampir Berakhir
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Demi melindungi kerahasiaan data laporan korban, sesi akan ditutup otomatis karena tidak ada aktivitas selama 15 menit.
+              </p>
+            </div>
+
+            {/* Countdown Badge */}
+            <div className="py-3 px-6 rounded-2xl bg-slate-800 border border-slate-700/80 inline-block">
+              <span className="text-xs text-slate-400 block mb-1">Waktu tersisa sebelum logout:</span>
+              <span className="text-3xl font-mono font-black text-amber-400">
+                {formattedCountdown}
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleStayLoggedIn}
+                className="flex-1 py-3 px-4 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-[#0F9F91] to-[#0B7A6F] hover:shadow-lg hover:shadow-[#0F9F91]/25 transition-all"
+              >
+                Tetap Masuk
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="py-3 px-4 rounded-xl font-semibold text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 hover:text-white transition-colors"
+              >
+                Keluar Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar Desktop */}
       <aside className="hidden lg:flex lg:flex-col w-64 bg-[#17324D] text-white border-r border-slate-700/50 shadow-xl shrink-0">
         {/* Brand */}
@@ -84,20 +265,22 @@ export const AdminLayout: React.FC = () => {
               RUANG<span className="text-[#0F9F91]">AMAN</span>
             </span>
             <span className="block text-[10px] font-semibold tracking-wider text-emerald-300 uppercase">
-              Panel Satgas & BK
+              Panel Satgas &amp; BK
             </span>
           </div>
         </div>
 
-        {/* Demo Notice Banner */}
-        <div className="mx-4 mt-4 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-start gap-2">
-          <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-          <span>
-            <strong>MODE DEMO MINGGU 2</strong>
-            <br />
-            Data disimpan di Mock Repository memori lokal.
-          </span>
-        </div>
+        {/* Demo Notice Banner — hanya jika demo auth lokal aktif */}
+        {localStorage.getItem('ruangaman_admin_token') && (
+          <div className="mx-4 mt-4 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-start gap-2">
+            <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <span>
+              <strong>SESI DEMO LOKAL</strong>
+              <br />
+              Menggunakan autentikasi demo non-produksi.
+            </span>
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1.5 mt-2">
@@ -130,7 +313,9 @@ export const AdminLayout: React.FC = () => {
             </div>
             <div className="truncate flex-1">
               <p className="text-xs font-semibold text-white truncate">{admin?.full_name}</p>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider">{admin?.role}</p>
+              <p className="text-[10px] text-emerald-300 font-semibold uppercase tracking-wider">
+                {getRoleLabel(admin?.role)}
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -145,7 +330,7 @@ export const AdminLayout: React.FC = () => {
               type="button"
               onClick={handleLogout}
               className="inline-flex items-center justify-center p-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 transition-colors"
-              title="Logout"
+              title="Keluar Sesi Petugas"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -166,14 +351,14 @@ export const AdminLayout: React.FC = () => {
               <Menu className="w-5 h-5" />
             </button>
             <h2 className="text-sm sm:text-base font-bold text-[#17324D] hidden sm:block">
-              Sistem Manajemen Kasus & Pemulihan
+              Sistem Manajemen Kasus &amp; Pemulihan
             </h2>
           </div>
 
           <div className="flex items-center gap-3">
             <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <Activity className="w-3.5 h-3.5" />
-              <span>Backend REST API Aktif</span>
+              <span>Sesi Aman Aktif</span>
             </span>
 
             <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
@@ -181,7 +366,7 @@ export const AdminLayout: React.FC = () => {
                 {admin?.full_name}
               </span>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-200 text-[#17324D]">
-                {admin?.role}
+                {getRoleLabel(admin?.role)}
               </span>
             </div>
           </div>

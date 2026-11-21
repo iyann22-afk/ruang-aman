@@ -278,7 +278,7 @@ export const BuatLaporan: React.FC = () => {
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#CCFBF1] text-[#0F9F91] border border-[#0F9F91]/20">
           <Lock className="w-3.5 h-3.5" />
-          <span>Formulir Pelaporan Terenkripsi</span>
+          <span>Formulir Pelaporan Aman &amp; Terlindungi</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-[#17324D]">Buat Laporan Kejadian</h1>
         <p className="text-sm text-slate-600 max-w-xl mx-auto">

@@ -1,9 +1,14 @@
 import { Router } from 'express';
 import { adminController } from '../../controllers/admin.controller.js';
 import { reportController } from '../../controllers/report.controller.js';
-import { authenticateAdmin } from '../../middleware/auth.middleware.js';
+import { authenticateAdmin, requireRoles } from '../../middleware/auth.middleware.js';
 import { validateBody } from '../../middleware/validate.middleware.js';
-import { adminLoginSchema } from '../../validators/admin.validator.js';
+import {
+  adminLoginSchema,
+  createAdminSchema,
+  updateAdminRoleSchema,
+  updateAdminStatusSchema,
+} from '../../validators/admin.validator.js';
 import { updateStatusSchema } from '../../validators/report.validator.js';
 
 const router = Router();
@@ -21,44 +26,25 @@ router.post('/auth/login', validateBody(adminLoginSchema), (req, res, next) => {
   adminController.login(req, res, next);
 });
 
-// Week 3: Verify Supabase token for Google OAuth admin login
-// Frontend calls GET /api/v1/admin/auth/verify with Bearer token
-// Returns 200 if admin, 403 if not an admin
-router.get('/auth/verify', async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ success: false, message: 'Token tidak ditemukan' });
-    return;
-  }
-  const token = authHeader.split(' ')[1];
-  try {
-    const { verifySupabaseToken } = await import('../../repositories/supabase/supabase.client.js');
-    const { getRepositories } = await import('../../repositories/repository.factory.js');
-
-    const user = await verifySupabaseToken(token);
-    if (!user) {
-      res.status(401).json({ success: false, message: 'Token tidak valid' });
-      return;
-    }
-
-    const { adminRepository } = await getRepositories();
-    const extRepo = adminRepository as { findByAuthUserId?: (id: string) => Promise<import('../../types/index.js').Admin | null> };
-    const admin = extRepo.findByAuthUserId
-      ? await extRepo.findByAuthUserId(user.id)
-      : null;
-
-    if (!admin || !admin.is_active) {
-      res.status(403).json({ success: false, message: 'Bukan petugas terdaftar' });
-      return;
-    }
-
-    res.json({ success: true, admin: { id: admin.id, full_name: admin.full_name, role: admin.role, email: admin.email } });
-  } catch (err) {
-    next(err);
-  }
+// Verifikasi Supabase token untuk Google OAuth admin login & Account Linking aman
+router.get('/auth/verify', (req, res, next) => {
+  adminController.verify(req, res, next);
 });
 
-// All routes below require Admin Authentication
+// Heartbeat untuk mereset idle timer 15 menit (hanya ketika ada interaksi pengguna aktif)
+router.post('/auth/heartbeat', authenticateAdmin, (req, res, next) => {
+  adminController.heartbeat(req, res, next);
+});
+
+// Logout petugas & pencabutan sesi di backend
+router.post('/auth/logout', authenticateAdmin, (req, res, next) => {
+  adminController.logout(req, res, next);
+});
+
+// =====================================================================
+// Semua rute di bawah ini mewajibkan Autentikasi Petugas Aktif
+// Sesi yang idle melebihi 15 menit otomatis ditolak oleh middleware
+// =====================================================================
 router.use(authenticateAdmin);
 
 // Dashboard Summary
@@ -66,7 +52,7 @@ router.get('/dashboard/summary', (req, res, next) => {
   reportController.getDashboardSummary(req, res, next);
 });
 
-// Reports Management
+// Reports Management (Dengan RBAC: Counselor hanya melihat laporan miliknya)
 router.get('/reports', (req, res, next) => {
   reportController.getAdminReports(req, res, next);
 });
@@ -87,8 +73,8 @@ router.patch(
   }
 );
 
-// Audit Trail & Status History
-router.get('/status-history', (req, res, next) => {
+// Audit Trail & Status History (Hanya Super Admin & Case Manager)
+router.get('/status-history', requireRoles('super_admin', 'case_manager'), (req, res, next) => {
   reportController.getAuditTrail(req, res, next);
 });
 
@@ -96,5 +82,39 @@ router.get('/status-history', (req, res, next) => {
 router.get('/profile', (req, res, next) => {
   adminController.getProfile(req, res, next);
 });
+
+// =====================================================================
+// MANAJEMEN PETUGAS (KHUSUS SUPER ADMIN)
+// =====================================================================
+router.get('/petugas', requireRoles('super_admin'), (req, res, next) => {
+  adminController.listPetugas(req, res, next);
+});
+
+router.post(
+  '/petugas',
+  requireRoles('super_admin'),
+  validateBody(createAdminSchema),
+  (req, res, next) => {
+    adminController.createPetugas(req, res, next);
+  }
+);
+
+router.patch(
+  '/petugas/:id/role',
+  requireRoles('super_admin'),
+  validateBody(updateAdminRoleSchema),
+  (req, res, next) => {
+    adminController.updatePetugasRole(req, res, next);
+  }
+);
+
+router.patch(
+  '/petugas/:id/status',
+  requireRoles('super_admin'),
+  validateBody(updateAdminStatusSchema),
+  (req, res, next) => {
+    adminController.updatePetugasStatus(req, res, next);
+  }
+);
 
 export default router;

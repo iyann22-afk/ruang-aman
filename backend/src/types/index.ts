@@ -53,6 +53,7 @@ export interface Report {
   incident_location: string;
   chronology: string;
   identity_mode: IdentityMode;
+  reporter_user_id?: string | null;
   reporter_name: string | null;
   reporter_contact: string | null;
   status: ReportStatus;

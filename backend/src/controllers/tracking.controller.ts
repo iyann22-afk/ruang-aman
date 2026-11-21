@@ -10,7 +10,7 @@ export class TrackingController {
       if (!result) {
         res.status(404).json({
           success: false,
-          message: 'Kode pelacakan tidak ditemukan. Pastikan format kode benar (misal: RA-2026-XXXXXX).',
+          message: 'Kode pelacakan tidak ditemukan atau belum terdaftar dalam sistem.',
           errors: [{ field: 'tracking_code', message: 'Laporan tidak ditemukan' }],
         });
         return;

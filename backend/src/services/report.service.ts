@@ -9,7 +9,7 @@ import {
   ReportFilterOptions,
 } from '../repositories/interfaces/report.repository.interface.js';
 import { getRepositoriesSync } from '../repositories/repository.factory.js';
-import { Report, ReportCategory, ReportStatus } from '../types/index.js';
+import { Admin, Report, ReportCategory, ReportStatus } from '../types/index.js';
 
 export class ReportService {
   constructor(private repo?: IReportRepository) {}
@@ -90,9 +90,16 @@ export class ReportService {
     };
   }
 
-  async getAdminReportList(filters?: ReportFilterOptions) {
+  async getAdminReportList(filters: ReportFilterOptions = {}, requestingAdmin?: Admin) {
     const repo = this.getRepository();
-    const { items, total } = await repo.listReports(filters);
+    const finalFilters: ReportFilterOptions = { ...filters };
+
+    // RBAC: Counselor hanya boleh melihat laporan yang ditugaskan kepada dirinya
+    if (requestingAdmin?.role === 'counselor') {
+      finalFilters.assigned_admin_id = requestingAdmin.id;
+    }
+
+    const { items, total } = await repo.listReports(finalFilters);
     const categories = await repo.getCategories();
     const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
 
@@ -104,10 +111,17 @@ export class ReportService {
     return { items: enrichedItems, total };
   }
 
-  async getAdminReportDetail(id: string) {
+  async getAdminReportDetail(id: string, requestingAdmin?: Admin) {
     const repo = this.getRepository();
     const report = await repo.findById(id);
     if (!report) return null;
+
+    // RBAC: Counselor hanya boleh mengakses detail laporan yang ditugaskan kepada dirinya
+    if (requestingAdmin?.role === 'counselor' && report.assigned_admin_id !== requestingAdmin.id) {
+      const err = new Error('Akses ditolak: Anda hanya dapat mengakses laporan yang ditugaskan kepada Anda.');
+      (err as any).statusCode = 403;
+      throw err;
+    }
 
     const category = await repo.getCategoryById(report.category_id);
     const evidences = await repo.getEvidencesByReportId(report.id);
@@ -137,8 +151,18 @@ export class ReportService {
     };
   }
 
-  async getEvidenceSignedUrl(reportId: string, evidenceId: string): Promise<string | null> {
+  async getEvidenceSignedUrl(reportId: string, evidenceId: string, requestingAdmin?: Admin): Promise<string | null> {
     const repo = this.getRepository();
+    const report = await repo.findById(reportId);
+    if (!report) return null;
+
+    // RBAC: Counselor hanya boleh mengakses bukti dari laporan yang ditugaskan
+    if (requestingAdmin?.role === 'counselor' && report.assigned_admin_id !== requestingAdmin.id) {
+      const err = new Error('Akses ditolak: Anda tidak memiliki wewenang untuk mengakses bukti laporan ini.');
+      (err as any).statusCode = 403;
+      throw err;
+    }
+
     const evidences = await repo.getEvidencesByReportId(reportId);
     const evidence = evidences.find((e) => e.id === evidenceId);
     if (!evidence) return null;
@@ -150,12 +174,20 @@ export class ReportService {
     status: ReportStatus,
     adminId?: string,
     publicMessage?: string,
-    internalNote?: string
+    internalNote?: string,
+    requestingAdmin?: Admin
   ) {
     const repo = this.getRepository();
     const report = await repo.findById(id);
     if (!report) {
       throw new Error('Laporan tidak ditemukan');
+    }
+
+    // RBAC: Counselor hanya boleh memperbarui laporan yang ditugaskan kepada dirinya
+    if (requestingAdmin?.role === 'counselor' && report.assigned_admin_id !== requestingAdmin.id) {
+      const err = new Error('Akses ditolak: Anda hanya dapat memperbarui laporan yang ditugaskan kepada Anda.');
+      (err as any).statusCode = 403;
+      throw err;
     }
 
     const updated = await repo.updateStatus(

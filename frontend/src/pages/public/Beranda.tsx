@@ -62,7 +62,7 @@ export const Beranda: React.FC = () => {
             <div className="flex items-center gap-4 text-xs text-slate-500 pt-2">
               <span className="flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-[#0F9F91]" />
-                Enkripsi Kode Unik
+                Kode Rahasia Unik
               </span>
               <span className="flex items-center gap-1.5">
                 <UserCheck className="w-3.5 h-3.5 text-[#0F9F91]" />

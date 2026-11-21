@@ -94,11 +94,16 @@ export const DetailLaporan: React.FC = () => {
     return (
       <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 space-y-4">
         <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-        <h3 className="text-lg font-bold text-[#17324D]">Laporan Tidak Ditemukan</h3>
+        <h3 className="text-lg font-bold text-[#17324D]">
+          {toast?.message || 'Laporan Tidak Ditemukan'}
+        </h3>
+        <p className="text-xs text-slate-500 max-w-md mx-auto">
+          Pastikan ID laporan benar atau periksa hak akses penugasan akun petugas Anda.
+        </p>
         <button
           type="button"
           onClick={() => navigate('/admin/laporan')}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Kembali ke Daftar Laporan</span>

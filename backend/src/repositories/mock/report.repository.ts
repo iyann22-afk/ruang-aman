@@ -212,6 +212,7 @@ export class MockReportRepository implements IReportRepository {
       incident_location: dto.incident_location,
       chronology: dto.chronology,
       identity_mode: dto.identity_mode,
+      reporter_user_id: null,
       reporter_name: dto.identity_mode === 'identified' ? dto.reporter_name || null : null,
       reporter_contact: dto.identity_mode === 'identified' ? dto.reporter_contact || null : null,
       status: 'submitted',
@@ -261,6 +262,9 @@ export class MockReportRepository implements IReportRepository {
       }
       if (filters.identity_mode) {
         result = result.filter((r) => r.identity_mode === filters.identity_mode);
+      }
+      if (filters.assigned_admin_id) {
+        result = result.filter((r) => r.assigned_admin_id === filters.assigned_admin_id);
       }
       if (filters.search && filters.search.trim() !== '') {
         const q = filters.search.toLowerCase();

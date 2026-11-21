@@ -1,7 +1,10 @@
+import { supabase } from '../lib/supabase.js';
 import {
+  AdminPetugasItem,
   AdminProfile,
   AdminReportDetail,
   AdminReportListItem,
+  AdminRole,
   ApiResponse,
   CounselingBookingResult,
   CounselingSlot,
@@ -23,21 +26,51 @@ class ApiClient {
     this.baseUrl = API_BASE_URL;
   }
 
-  private getAuthHeader(): Record<string, string> {
-    const token = localStorage.getItem('ruangaman_admin_token');
-    return token ? { Authorization: `Bearer ${token}` } : {};
+  /**
+   * Mendapatkan Bearer token autentikasi.
+   * Prioritas:
+   * 1. Supabase Session access_token (Google OAuth).
+   * 2. Fallback localStorage 'ruangaman_admin_token' (untuk demo token di development).
+   */
+  private async getAuthToken(): Promise<string | null> {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session?.access_token) {
+        return data.session.access_token;
+      }
+    } catch {
+      // ignore error
+    }
+
+    return localStorage.getItem('ruangaman_admin_token');
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    const headers = {
-      ...this.getAuthHeader(),
-      ...(options.headers || {}),
-    };
+    const token = await this.getAuthToken();
+
+    const requestHeaders: Record<string, string> = {};
+    if (token) {
+      requestHeaders['Authorization'] = `Bearer ${token}`;
+    }
+
+    if (options.headers) {
+      if (options.headers instanceof Headers) {
+        options.headers.forEach((val, key) => {
+          requestHeaders[key] = val;
+        });
+      } else if (Array.isArray(options.headers)) {
+        options.headers.forEach(([key, val]) => {
+          requestHeaders[key] = val;
+        });
+      } else {
+        Object.assign(requestHeaders, options.headers);
+      }
+    }
 
     const res = await fetch(url, {
       ...options,
-      headers,
+      headers: requestHeaders,
     });
 
     const data: ApiResponse<T> = await res.json().catch(() => ({
@@ -75,7 +108,6 @@ class ApiClient {
     created_at: string;
     has_evidence: boolean;
   }> {
-    // When sending FormData, browser sets multipart/form-data boundary automatically
     const url = `${this.baseUrl}/public/reports`;
     const res = await fetch(url, {
       method: 'POST',
@@ -110,8 +142,7 @@ class ApiClient {
   async getEducationMaterials(search?: string, category?: string): Promise<EducationMaterial[]> {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
-    if (category && category !== 'Semua') params.append('category', category);
-
+    if (category && category !== 'all') params.append('category', category);
     const query = params.toString() ? `?${params.toString()}` : '';
     return this.request<EducationMaterial[]>(`/public/education${query}`);
   }
@@ -128,10 +159,10 @@ class ApiClient {
     return this.request<CounselingSlot[]>('/public/counseling-slots');
   }
 
-  async bookCounselingSlot(payload: {
+  async bookCounseling(payload: {
     slot_id: string;
     student_name: string;
-    contact_method: string;
+    contact_method: 'whatsapp' | 'email' | 'telegram' | 'school_messenger';
     contact_value: string;
     privacy_acknowledged: boolean;
   }): Promise<CounselingBookingResult> {
@@ -140,6 +171,17 @@ class ApiClient {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+  }
+
+  // Alias untuk kompatibilitas form booking konseling
+  async bookCounselingSlot(payload: {
+    slot_id: string;
+    student_name: string;
+    contact_method: 'whatsapp' | 'email' | 'telegram' | 'school_messenger';
+    contact_value: string;
+    privacy_acknowledged: boolean;
+  }): Promise<CounselingBookingResult> {
+    return this.bookCounseling(payload);
   }
 
   // ==========================================
@@ -199,6 +241,61 @@ class ApiClient {
 
   async getAdminProfile(): Promise<AdminProfile> {
     return this.request<AdminProfile>('/admin/profile');
+  }
+
+  // ==========================================
+  // MANAJEMEN PETUGAS (SUPER ADMIN)
+  // ==========================================
+
+  async getPetugasList(): Promise<AdminPetugasItem[]> {
+    return this.request<AdminPetugasItem[]>('/admin/petugas');
+  }
+
+  async createPetugas(payload: {
+    full_name: string;
+    email: string;
+    role: AdminRole;
+    is_active?: boolean;
+  }): Promise<AdminPetugasItem> {
+    return this.request<AdminPetugasItem>('/admin/petugas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updatePetugasRole(id: string, role: AdminRole): Promise<AdminPetugasItem> {
+    return this.request<AdminPetugasItem>(`/admin/petugas/${id}/role`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    });
+  }
+
+  async updatePetugasStatus(id: string, is_active: boolean): Promise<AdminPetugasItem> {
+    return this.request<AdminPetugasItem>(`/admin/petugas/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active }),
+    });
+  }
+
+  // ==========================================
+  // SESSION HEARTBEAT & LOGOUT
+  // ==========================================
+
+  async sendHeartbeat(): Promise<{ last_activity_at: string }> {
+    return this.request<{ last_activity_at: string }>('/admin/auth/heartbeat', {
+      method: 'POST',
+    });
+  }
+
+  async logoutAdmin(): Promise<void> {
+    try {
+      await this.request('/admin/auth/logout', { method: 'POST' });
+    } catch {
+      // abaikan error jika sesi sudah kadaluarsa
+    }
   }
 }
 

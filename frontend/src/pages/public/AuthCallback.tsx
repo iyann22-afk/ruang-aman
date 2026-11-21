@@ -7,7 +7,8 @@ import { supabase } from '../../lib/supabase';
  * Route: /auth/callback
  *
  * Supabase mengarahkan browser ke sini setelah Google login.
- * Halaman ini memproses token, lalu redirect ke halaman yang sesuai.
+ * Halaman ini memproses token, memverifikasi hak akses admin jika login dari panel petugas,
+ * lalu redirect ke halaman yang sesuai.
  */
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -24,20 +25,60 @@ export default function AuthCallback() {
 
         if (error) {
           console.error('[AuthCallback] Error memproses callback:', error.message);
-          navigate('/?auth=error', { replace: true });
+          navigate('/admin/login?error=auth_failed', { replace: true });
           return;
         }
 
         if (data.session) {
-          // Login berhasil — cek apakah ini dari halaman admin
           const returnTo = sessionStorage.getItem('auth_return_to') || '/';
           sessionStorage.removeItem('auth_return_to');
+
+          // Jika callback berasal dari alur login petugas / admin
+          if (returnTo.startsWith('/admin')) {
+            try {
+              const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+              const verifyRes = await fetch(`${apiBase}/admin/auth/verify`, {
+                method: 'GET',
+                headers: {
+                  Authorization: `Bearer ${data.session.access_token}`,
+                },
+              });
+
+              if (!verifyRes.ok) {
+                const resJson = await verifyRes.json().catch(() => ({}));
+                // Cabut session Supabase karena akun ini bukan petugas sah
+                await supabase.auth.signOut();
+
+                const isInactive =
+                  verifyRes.status === 403 &&
+                  typeof resJson.message === 'string' &&
+                  resJson.message.toLowerCase().includes('dinonaktifkan');
+
+                const errorCode = isInactive ? 'inactive' : 'not_registered';
+                navigate(`/admin/login?error=${errorCode}`, { replace: true });
+                return;
+              }
+
+              // Set timestamp aktivitas awal untuk 15-minute idle tracking
+              localStorage.setItem('ruangaman_admin_last_activity', Date.now().toString());
+              navigate(returnTo, { replace: true });
+              return;
+            } catch (verifyErr) {
+              console.error('[AuthCallback] Gagal menghubungi server verifikasi admin:', verifyErr);
+              await supabase.auth.signOut();
+              navigate('/admin/login?error=verify_error', { replace: true });
+              return;
+            }
+          }
+
+          // Alur login publik biasa (misal opsional lapor teridentifikasi)
           navigate(returnTo, { replace: true });
         } else {
           navigate('/', { replace: true });
         }
-      } catch {
-        navigate('/?auth=error', { replace: true });
+      } catch (err) {
+        console.error('[AuthCallback] Unexpected error:', err);
+        navigate('/admin/login?error=auth_failed', { replace: true });
       }
     };
 
@@ -71,7 +112,7 @@ export default function AuthCallback() {
         </div>
         <h2 className="text-xl font-semibold mb-2">Memproses masuk…</h2>
         <p className="text-sm text-[#CCFBF1] opacity-80">
-          Mohon tunggu, kami sedang memverifikasi akun Anda.
+          Mohon tunggu, kami sedang memverifikasi akun petugas Anda.
         </p>
       </div>
     </div>
