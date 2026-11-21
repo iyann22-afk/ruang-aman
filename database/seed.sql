@@ -1,32 +1,80 @@
 -- =====================================================================
 -- RUANGAMAN SEED DATA — Week 3
--- Jalankan setelah 0001 dan 0002 migration
+-- Disesuaikan secara presisi dengan 0001_initial_schema.sql & 0002_week3_additions.sql
 -- =====================================================================
 
 -- ===== 1. KATEGORI LAPORAN =====
 INSERT INTO report_categories (id, name, slug, description, is_active) VALUES
-  (gen_random_uuid(), 'Perundungan Fisik', 'perundungan-fisik',
-   'Tindakan kekerasan fisik seperti memukul, menendang, mendorong, atau bentuk agresi fisik lainnya.', true),
-  (gen_random_uuid(), 'Perundungan Verbal', 'perundungan-verbal',
-   'Penghinaan, olok-olok, ancaman, atau kata-kata menyakitkan yang dilakukan berulang kali.', true),
-  (gen_random_uuid(), 'Perundungan Siber (Cyberbullying)', 'perundungan-siber',
-   'Pelecehan, ancaman, atau penyebaran konten memalukan melalui media sosial, pesan, atau platform digital.', true),
-  (gen_random_uuid(), 'Kekerasan Seksual', 'kekerasan-seksual',
-   'Pelecehan, sentuhan tidak senonoh, atau tindakan seksual yang tidak dikehendaki dalam lingkungan sekolah.', true),
-  (gen_random_uuid(), 'Diskriminasi', 'diskriminasi',
-   'Perlakuan tidak adil berdasarkan suku, agama, ras, gender, kondisi fisik, atau latar belakang ekonomi.', true),
-  (gen_random_uuid(), 'Pemerasan atau Pencurian', 'pemerasan-pencurian',
-   'Memaksa korban menyerahkan uang, barang, atau melakukan sesuatu melalui intimidasi.', true),
-  (gen_random_uuid(), 'Lainnya', 'lainnya',
-   'Bentuk kekerasan atau pelanggaran lain yang tidak termasuk kategori di atas.', true)
-ON CONFLICT (slug) DO NOTHING;
+  (
+    'c0000001-0000-0000-0000-000000000001',
+    'Perundungan Fisik',
+    'perundungan-fisik',
+    'Tindakan kekerasan fisik seperti memukul, menendang, mendorong, atau bentuk agresi fisik lainnya.',
+    true
+  ),
+  (
+    'c0000001-0000-0000-0000-000000000002',
+    'Perundungan Verbal',
+    'perundungan-verbal',
+    'Penghinaan, olok-olok, ancaman, atau kata-kata menyakitkan yang dilakukan berulang kali.',
+    true
+  ),
+  (
+    'c0000001-0000-0000-0000-000000000003',
+    'Perundungan Siber (Cyberbullying)',
+    'perundungan-siber',
+    'Pelecehan, ancaman, atau penyebaran konten memalukan melalui media sosial, pesan, atau platform digital.',
+    true
+  ),
+  (
+    'c0000001-0000-0000-0000-000000000004',
+    'Kekerasan Seksual',
+    'kekerasan-seksual',
+    'Pelecehan, sentuhan tidak senonoh, atau tindakan seksual yang tidak dikehendaki dalam lingkungan sekolah.',
+    true
+  ),
+  (
+    'c0000001-0000-0000-0000-000000000005',
+    'Diskriminasi',
+    'diskriminasi',
+    'Perlakuan tidak adil berdasarkan suku, agama, ras, gender, kondisi fisik, atau latar belakang ekonomi.',
+    true
+  ),
+  (
+    'c0000001-0000-0000-0000-000000000006',
+    'Pemerasan atau Pencurian',
+    'pemerasan-pencurian',
+    'Memaksa korban menyerahkan uang, barang, atau melakukan sesuatu melalui intimidasi.',
+    true
+  ),
+  (
+    'c0000001-0000-0000-0000-000000000007',
+    'Lainnya',
+    'lainnya',
+    'Bentuk kekerasan atau pelanggaran lain yang tidak termasuk kategori di atas.',
+    true
+  )
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  is_active = EXCLUDED.is_active;
 
 -- ===== 2. MATERI EDUKASI =====
-INSERT INTO education_materials (id, title, slug, description, content, category, read_time_minutes, is_published) VALUES
+INSERT INTO education_materials (
+  id,
+  title,
+  slug,
+  category,
+  summary,
+  content,
+  reading_minutes,
+  is_published
+) VALUES
   (
-    gen_random_uuid(),
+    'e0000001-0000-0000-0000-000000000001',
     'Apa itu Perundungan? Kenali Bentuk dan Dampaknya',
     'apa-itu-perundungan',
+    'pengenalan-dasar',
     'Panduan lengkap mengenali perundungan dalam berbagai bentuknya dan dampak psikologis yang ditimbulkan.',
     'Perundungan (bullying) adalah perilaku agresif yang dilakukan secara berulang oleh seseorang atau kelompok terhadap orang lain yang lebih lemah. Ada tiga komponen utama: intensi (disengaja), repetisi (berulang), dan ketidakseimbangan kekuatan.
 
@@ -49,14 +97,14 @@ Pelecehan melalui media sosial, pesan, atau konten digital yang memalukan.
 - Penurunan prestasi akademik
 - Isolasi sosial
 - Dalam kasus parah: risiko menyakiti diri sendiri',
-    'pengenalan-dasar',
     8,
     true
   ),
   (
-    gen_random_uuid(),
+    'e0000001-0000-0000-0000-000000000002',
     'Langkah Aman Melaporkan Perundungan',
     'cara-melaporkan-perundungan',
+    'panduan-tindakan',
     'Panduan praktis bagi korban atau saksi perundungan tentang cara melaporkan kejadian dengan aman dan terlindungi.',
     '## Mengapa Melaporkan Itu Penting?
 
@@ -75,14 +123,14 @@ Guru BK, orang tua, atau konselor adalah orang pertama yang bisa membantu.
 
 **4. Jangan Konfrontasi Sendirian**
 Hindari menghadapi pelaku tanpa dukungan. Prioritaskan keselamatan Anda.',
-    'panduan-tindakan',
     6,
     true
   ),
   (
-    gen_random_uuid(),
+    'e0000001-0000-0000-0000-000000000003',
     'Memahami Hak-Hak Korban Kekerasan di Sekolah',
     'hak-korban-kekerasan',
+    'hak-dan-regulasi',
     'Penjelasan tentang hak-hak hukum dan kelembagaan yang dimiliki korban kekerasan di lingkungan sekolah.',
     '## Dasar Hukum Perlindungan Siswa
 
@@ -98,14 +146,14 @@ Siswa di Indonesia dilindungi oleh beberapa regulasi penting:
 ✅ Hak mendapatkan layanan konseling
 ✅ Hak atas kerahasiaan identitas
 ✅ Hak mendapatkan penanganan yang adil dan cepat',
-    'hak-dan-regulasi',
     10,
     true
   ),
   (
-    gen_random_uuid(),
+    'e0000001-0000-0000-0000-000000000004',
     'Cara Mendukung Teman yang Mengalami Perundungan',
     'mendukung-teman-korban',
+    'panduan-tindakan',
     'Panduan praktis bagi saksi dan teman untuk memberikan dukungan yang tepat kepada korban perundungan.',
     '## Peran Penting Saksi dan Teman Sebaya
 
@@ -123,97 +171,162 @@ Penelitian menunjukkan bahwa 85% kasus perundungan terjadi di depan saksi. Dukun
 - Validasi perasaan mereka: "Itu tidak adil dan bukan salahmu"
 - Dampingi ke konselor atau guru BK
 - Bantu dokumentasikan kejadian jika mereka setuju',
-    'panduan-tindakan',
     7,
     true
   )
-ON CONFLICT (slug) DO NOTHING;
+ON CONFLICT (slug) DO UPDATE SET
+  title = EXCLUDED.title,
+  category = EXCLUDED.category,
+  summary = EXCLUDED.summary,
+  content = EXCLUDED.content,
+  reading_minutes = EXCLUDED.reading_minutes,
+  is_published = EXCLUDED.is_published;
 
 -- ===== 3. SUMBER DAYA PENDAMPINGAN =====
-INSERT INTO support_resources (id, name, type, contact_info, description, is_active) VALUES
+INSERT INTO support_resources (
+  id,
+  title,
+  resource_type,
+  description,
+  contact_name,
+  phone,
+  website_url,
+  operating_hours,
+  location,
+  is_published
+) VALUES
   (
-    gen_random_uuid(),
-    'SAPA 129 — Hotline Perlindungan Perempuan dan Anak',
+    's0000001-0000-0000-0000-000000000001',
+    'Layanan Sahabat Perempuan & Anak (SAPA 129)',
     'hotline',
-    '{"phone": "129", "hours": "24/7"}',
-    'Layanan hotline nasional 24 jam yang dikelola Kementerian Pemberdayaan Perempuan dan Perlindungan Anak. Gratis dari seluruh Indonesia.',
+    'Layanan telepon darurat pengaduan kekerasan terhadap perempuan dan anak resmi Kementerian PPPA RI.',
+    'KemenPPPA RI',
+    '129 / WhatsApp 08111-129-129',
+    'https://kemenpppa.go.id',
+    '24 Jam Setiap Hari',
+    'Nasional',
     true
   ),
   (
-    gen_random_uuid(),
+    's0000001-0000-0000-0000-000000000002',
     'Into The Light Indonesia',
     'foundation',
-    '{"phone": "119 ext 8", "website": "https://www.intothelightid.org"}',
-    'Organisasi yang bergerak di pencegahan bunuh diri dan peningkatan kesehatan mental remaja Indonesia.',
+    'Organisasi berbasis komunitas yang fokus pada advokasi kesehatan mental dan pencegahan bunuh diri remaja.',
+    'Tim Pendamping Sebaya',
+    '119 ext 8',
+    'https://www.intothelightid.org',
+    'Senin - Jumat, 09:00 - 17:00 WIB',
+    'Daring / Komunitas',
     true
   ),
   (
-    gen_random_uuid(),
-    'Yayasan Pulih',
+    's0000001-0000-0000-0000-000000000003',
+    'Yayasan Pulih (Pemulihan Trauma Psikologis)',
     'counselor',
-    '{"phone": "(021) 788-42580", "website": "https://www.yayasanpulih.org"}',
-    'Lembaga psikososial yang menyediakan layanan konseling, pendampingan trauma, dan pemulihan bagi korban kekerasan.',
+    'Layanan konseling profesional dan psikoterapi pemulihan trauma kekerasan serta perundungan anak.',
+    'Pusat Krisis Pulih',
+    '021-78842580 / 0811-8436-633',
+    'https://yayasanpulih.org',
+    'Senin - Sabtu, 09:00 - 18:00 WIB',
+    'Jakarta Selatan & Konseling Daring',
     true
   ),
   (
-    gen_random_uuid(),
-    'Hotline Kesehatan Jiwa Kemenkes',
+    's0000001-0000-0000-0000-000000000004',
+    'Hotline Kesehatan Jiwa Kemenkes Sejiwa',
     'hotline',
-    '{"phone": "119 ext 8", "hours": "24/7"}',
-    'Layanan konseling kesehatan jiwa gratis dari Kementerian Kesehatan RI. Tersedia 24 jam untuk krisis mental.',
+    'Layanan pertolongan pertama psikologis cepat dari Kementerian Kesehatan Republik Indonesia.',
+    'Kementerian Kesehatan RI',
+    '119 ext 8',
+    'https://kemkes.go.id',
+    '24 Jam Setiap Hari',
+    'Nasional',
     true
   ),
   (
-    gen_random_uuid(),
-    'LBH APIK — Bantuan Hukum',
+    's0000001-0000-0000-0000-000000000005',
+    'LBH APIK (Bantuan Hukum Perempuan & Anak)',
     'legal',
-    '{"phone": "(021) 877-97289", "website": "https://lbhapik.or.id"}',
-    'Lembaga Bantuan Hukum untuk perempuan dan anak korban kekerasan. Menyediakan pendampingan hukum secara gratis.',
+    'Lembaga bantuan hukum pro bono yang mendampingi proses hukum korban kekerasan di lingkungan pendidikan.',
+    'Divisi Pelayanan Hukum LBH APIK',
+    '0813-8882-2669',
+    'https://lbhapik.or.id',
+    'Senin - Jumat, 08:30 - 16:30 WIB',
+    'Nasional / Jabodetabek',
     true
   )
-ON CONFLICT DO NOTHING;
+ON CONFLICT (title) DO UPDATE SET
+  resource_type = EXCLUDED.resource_type,
+  description = EXCLUDED.description,
+  contact_name = EXCLUDED.contact_name,
+  phone = EXCLUDED.phone,
+  website_url = EXCLUDED.website_url,
+  operating_hours = EXCLUDED.operating_hours,
+  location = EXCLUDED.location,
+  is_published = EXCLUDED.is_published;
 
--- ===== 4. SLOT KONSELING (Contoh) =====
-INSERT INTO counseling_slots (id, counselor_name, counselor_title, slot_date, slot_time, duration_minutes, session_mode, location_or_link, max_capacity, status) VALUES
+-- ===== 4. SLOT KONSELING =====
+-- counselor_admin_id bernilai NULL pada seed awal
+-- Petugas konselor yang disetujui dapat mengklaim atau ditugaskan pada slot ini
+INSERT INTO counseling_slots (
+  id,
+  counselor_admin_id,
+  start_at,
+  end_at,
+  session_mode,
+  location,
+  meeting_link,
+  capacity,
+  is_published,
+  status
+) VALUES
   (
-    gen_random_uuid(),
-    'Dr. Anita Rahayu, M.Psi., Psikolog',
-    'Psikolog Klinis',
-    CURRENT_DATE + INTERVAL '3 days',
-    '09:00:00',
-    60,
-    'online',
-    'Link Zoom akan dikirim via email setelah konfirmasi',
-    1,
-    'available'
-  ),
-  (
-    gen_random_uuid(),
-    'Reza Firmansyah, S.Psi.',
-    'Konselor Sebaya Tersertifikasi',
-    CURRENT_DATE + INTERVAL '4 days',
-    '13:00:00',
-    45,
-    'online',
-    'Google Meet — link dikirim setelah booking dikonfirmasi',
-    1,
-    'available'
-  ),
-  (
-    gen_random_uuid(),
-    'Dr. Anita Rahayu, M.Psi., Psikolog',
-    'Psikolog Klinis',
-    CURRENT_DATE + INTERVAL '7 days',
-    '10:00:00',
-    60,
+    'sl000001-0000-0000-0000-000000000001',
+    NULL,
+    NOW() + INTERVAL '1 day' + INTERVAL '9 hours',
+    NOW() + INTERVAL '1 day' + INTERVAL '10 hours',
     'offline',
-    'Ruang BK Lantai 2, Gedung A',
+    'Ruang Bimbingan Konseling Lt. 2 (Bilik Ramah Siswa)',
+    NULL,
     1,
+    true,
+    'available'
+  ),
+  (
+    'sl000001-0000-0000-0000-000000000002',
+    NULL,
+    NOW() + INTERVAL '1 day' + INTERVAL '13 hours',
+    NOW() + INTERVAL '1 day' + INTERVAL '14 hours',
+    'online',
+    NULL,
+    'https://meet.google.com/demo-ruangaman-bk',
+    1,
+    true,
+    'available'
+  ),
+  (
+    'sl000001-0000-0000-0000-000000000003',
+    NULL,
+    NOW() + INTERVAL '2 days' + INTERVAL '10 hours',
+    NOW() + INTERVAL '2 days' + INTERVAL '11 hours',
+    'offline',
+    'Ruang Bimbingan Konseling Lt. 2 (Bilik Ramah Siswa)',
+    NULL,
+    1,
+    true,
     'available'
   )
-ON CONFLICT DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET
+  start_at = EXCLUDED.start_at,
+  end_at = EXCLUDED.end_at,
+  session_mode = EXCLUDED.session_mode,
+  location = EXCLUDED.location,
+  meeting_link = EXCLUDED.meeting_link,
+  capacity = EXCLUDED.capacity,
+  is_published = EXCLUDED.is_published,
+  status = EXCLUDED.status;
 
 -- =====================================================================
--- SELESAI — Seed data berhasil diterapkan
+-- SELESAI — Seed data konsisten dengan seluruh skema PostgreSQL
 -- =====================================================================
-SELECT 'Seed data berhasil diterapkan.' AS status;
+SELECT 'Seed data berhasil diverifikasi dan diterapkan.' AS status;

@@ -13,12 +13,13 @@ function generateBookingCode(): string {
 export class SupabaseCounselingRepository implements ICounselingRepository {
   async listSlots(): Promise<CounselingSlot[]> {
     if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
+    // Kolom aktual: start_at (bukan slot_date / slot_time)
     const { data, error } = await supabaseAdmin
       .from('counseling_slots')
       .select('*')
       .eq('status', 'available')
-      .order('slot_date')
-      .order('slot_time');
+      .eq('is_published', true)
+      .order('start_at', { ascending: true });
     if (error) return [];
     return (data as CounselingSlot[]) ?? [];
   }
@@ -45,7 +46,7 @@ export class SupabaseCounselingRepository implements ICounselingRepository {
 
     const booking_code = generateBookingCode();
 
-    // Buat booking
+    // Buat booking — kolom skema 0001: booking_status (bukan status)
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from('counseling_bookings')
       .insert({
@@ -56,7 +57,7 @@ export class SupabaseCounselingRepository implements ICounselingRepository {
         contact_method: dto.contact_method,
         contact_value: dto.contact_value,
         privacy_acknowledged: dto.privacy_acknowledged,
-        status: 'confirmed',
+        booking_status: 'confirmed',
       })
       .select()
       .single();
@@ -65,7 +66,7 @@ export class SupabaseCounselingRepository implements ICounselingRepository {
       throw new Error(`Gagal membuat booking: ${bookingError?.message}`);
     }
 
-    // Update status slot
+    // Update status slot menjadi 'booked'
     await supabaseAdmin
       .from('counseling_slots')
       .update({ status: 'booked' })
@@ -87,11 +88,12 @@ export class SupabaseCounselingRepository implements ICounselingRepository {
 
   async listSupportResources(): Promise<SupportResource[]> {
     if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
+    // Kolom aktual skema 0001: title dan is_published (bukan name / is_active)
     const { data, error } = await supabaseAdmin
       .from('support_resources')
       .select('*')
-      .eq('is_active', true)
-      .order('name');
+      .eq('is_published', true)
+      .order('title', { ascending: true });
     if (error) return [];
     return (data as SupportResource[]) ?? [];
   }

@@ -1,13 +1,22 @@
-import { IReportRepository } from '../repositories/interfaces/report.repository.interface.js';
-import { reportRepository } from '../repositories/mock/report.repository.js';
-import { CreateReportDTO } from '../repositories/interfaces/report.repository.interface.js';
-import { Report, ReportCategory } from '../types/index.js';
+import { uploadEvidenceToStorage } from '../middleware/upload.middleware.js';
+import {
+  CreateReportDTO,
+  IReportRepository,
+  ReportFilterOptions,
+} from '../repositories/interfaces/report.repository.interface.js';
+import { getRepositoriesSync } from '../repositories/repository.factory.js';
+import { Report, ReportCategory, ReportStatus } from '../types/index.js';
 
 export class ReportService {
-  constructor(private repo: IReportRepository = reportRepository) {}
+  constructor(private repo?: IReportRepository) {}
+
+  private getRepository(): IReportRepository {
+    if (this.repo) return this.repo;
+    return getRepositoriesSync().reportRepository;
+  }
 
   async getCategories(): Promise<ReportCategory[]> {
-    return this.repo.getCategories();
+    return this.getRepository().getCategories();
   }
 
   async submitReport(
@@ -19,8 +28,10 @@ export class ReportService {
     created_at: string;
     has_evidence: boolean;
   }> {
+    const repo = this.getRepository();
+
     // 1. Verify Category exists
-    const category = await this.repo.getCategoryById(dto.category_id);
+    const category = await repo.getCategoryById(dto.category_id);
     if (!category) {
       throw new Error('Kategori laporan tidak valid atau tidak ditemukan');
     }
@@ -33,14 +44,20 @@ export class ReportService {
     };
 
     // 3. Create Report
-    const report = await this.repo.createReport(sanitizedDto);
+    const report = await repo.createReport(sanitizedDto);
 
     // 4. Attach evidence if file is present
     let hasEvidence = false;
     if (file) {
       hasEvidence = true;
-      const storagePath = `report-evidence-private/demo/${report.id}/${file.originalname}`;
-      await this.repo.createEvidence({
+      let storagePath: string;
+      try {
+        storagePath = await uploadEvidenceToStorage(report.id, file);
+      } catch {
+        storagePath = `report-evidence-private/fallback/${report.id}/${file.originalname}`;
+      }
+
+      await repo.createEvidence({
         report_id: report.id,
         storage_path: storagePath,
         original_filename: file.originalname,
@@ -57,9 +74,10 @@ export class ReportService {
     };
   }
 
-  async getAdminReportList(filters?: any) {
-    const { items, total } = await this.repo.listReports(filters);
-    const categories = await this.repo.getCategories();
+  async getAdminReportList(filters?: ReportFilterOptions) {
+    const repo = this.getRepository();
+    const { items, total } = await repo.listReports(filters);
+    const categories = await repo.getCategories();
     const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
 
     const enrichedItems = items.map((r) => ({
@@ -71,12 +89,13 @@ export class ReportService {
   }
 
   async getAdminReportDetail(id: string) {
-    const report = await this.repo.findById(id);
+    const repo = this.getRepository();
+    const report = await repo.findById(id);
     if (!report) return null;
 
-    const category = await this.repo.getCategoryById(report.category_id);
-    const evidences = await this.repo.getEvidencesByReportId(report.id);
-    const histories = await this.repo.getHistoriesByReportId(report.id);
+    const category = await repo.getCategoryById(report.category_id);
+    const evidences = await repo.getEvidencesByReportId(report.id);
+    const histories = await repo.getHistoriesByReportId(report.id);
 
     return {
       ...report,
@@ -88,17 +107,18 @@ export class ReportService {
 
   async updateReportStatus(
     id: string,
-    status: any,
+    status: ReportStatus,
     adminId?: string,
     publicMessage?: string,
     internalNote?: string
   ) {
-    const report = await this.repo.findById(id);
+    const repo = this.getRepository();
+    const report = await repo.findById(id);
     if (!report) {
       throw new Error('Laporan tidak ditemukan');
     }
 
-    const updated = await this.repo.updateStatus(
+    const updated = await repo.updateStatus(
       id,
       status,
       adminId,
@@ -109,9 +129,10 @@ export class ReportService {
   }
 
   async getAuditTrail(limit?: number) {
-    const histories = await this.repo.getAllStatusHistories(limit);
+    const repo = this.getRepository();
+    const histories = await repo.getAllStatusHistories(limit);
     // Enrich with report tracking codes
-    const reports = await this.repo.listReports({ limit: 100 });
+    const reports = await repo.listReports({ limit: 100 });
     const reportMap = new Map(reports.items.map((r) => [r.id, r.tracking_code]));
 
     return histories.map((h) => ({
@@ -121,7 +142,7 @@ export class ReportService {
   }
 
   async getDashboardSummary() {
-    return this.repo.getDashboardSummary();
+    return this.getRepository().getDashboardSummary();
   }
 }
 

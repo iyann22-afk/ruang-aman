@@ -10,7 +10,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .select('*')
       .eq('email', email.toLowerCase())
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (error || !data) return null;
     return data as Admin;
@@ -23,7 +23,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .select('*')
       .eq('id', id)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (error || !data) return null;
     return data as Admin;
@@ -36,7 +36,7 @@ export class SupabaseAdminRepository implements IAdminRepository {
       .select('*')
       .eq('auth_user_id', authUserId)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (error || !data) return null;
     return data as Admin;

@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { v4 as uuidv4 } from 'uuid';
 import { corsOptions } from './config/cors.js';
 import { errorHandler } from './middleware/error.middleware.js';
+import { getRepositories } from './repositories/repository.factory.js';
 import v1Routes from './routes/v1/index.js';
 import { logger } from './utils/logger.js';
 
@@ -33,6 +34,16 @@ export const createApp = (): Application => {
     });
 
     next();
+  });
+
+  // Repositories initialization middleware (Critical for Vercel Serverless Functions cold-start)
+  app.use(async (_req: Request, _res: Response, next) => {
+    try {
+      await getRepositories();
+      next();
+    } catch (err) {
+      next(err);
+    }
   });
 
   // Mount API v1

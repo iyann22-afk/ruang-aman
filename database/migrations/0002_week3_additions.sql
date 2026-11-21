@@ -20,13 +20,29 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 CREATE INDEX IF NOT EXISTS idx_user_profiles_auth_user_id ON user_profiles(auth_user_id);
 
 -- =====================================================================
--- 2. TAMBAH KOLOM reporter_user_id PADA TABEL REPORTS (Week 3)
+-- 2. PENYESUAIAN SKEMA & RELASI (Week 3)
 -- =====================================================================
+
+-- Tambah kolom reporter_user_id pada tabel reports
 ALTER TABLE reports
     ADD COLUMN IF NOT EXISTS reporter_user_id UUID REFERENCES user_profiles(id) ON DELETE SET NULL;
 
--- Index untuk pencarian laporan berdasarkan user
 CREATE INDEX IF NOT EXISTS idx_reports_reporter_user_id ON reports(reporter_user_id);
+
+-- Ubah counselor_admin_id pada counseling_slots agar bisa nullable
+-- Memungkinkan seed slot awal sebelum akun admin petugas dibuat/disetujui
+ALTER TABLE counseling_slots
+    ALTER COLUMN counselor_admin_id DROP NOT NULL;
+
+-- Tambah unique constraint pada support_resources(title) agar seed idempotent
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'support_resources_title_key'
+    ) THEN
+        ALTER TABLE support_resources ADD CONSTRAINT support_resources_title_key UNIQUE (title);
+    END IF;
+END $$;
 
 -- =====================================================================
 -- 3. TRIGGER: auto-update updated_at
@@ -67,8 +83,22 @@ ALTER TABLE support_resources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE counseling_slots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE counseling_bookings ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if exists to allow re-running migration cleanly
+DROP POLICY IF EXISTS "user_profiles_own_read" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_own_update" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_own_insert" ON user_profiles;
+DROP POLICY IF EXISTS "admins_no_public_access" ON admins;
+DROP POLICY IF EXISTS "reports_no_public_access" ON reports;
+DROP POLICY IF EXISTS "report_categories_public_read" ON report_categories;
+DROP POLICY IF EXISTS "report_evidences_no_public_access" ON report_evidences;
+DROP POLICY IF EXISTS "report_status_histories_no_public_access" ON report_status_histories;
+DROP POLICY IF EXISTS "education_materials_public_read" ON education_materials;
+DROP POLICY IF EXISTS "support_resources_public_read" ON support_resources;
+DROP POLICY IF EXISTS "counseling_slots_public_read" ON counseling_slots;
+DROP POLICY IF EXISTS "counseling_bookings_no_public_access" ON counseling_bookings;
+
 -- ===== KEBIJAKAN: user_profiles =====
--- Pengguna hanya bisa baca/ubah profil sendiri
+-- Pengguna hanya bisa membaca dan mengubah profil mereka sendiri
 CREATE POLICY "user_profiles_own_read" ON user_profiles
     FOR SELECT USING (auth.uid() = auth_user_id);
 
@@ -79,68 +109,50 @@ CREATE POLICY "user_profiles_own_insert" ON user_profiles
     FOR INSERT WITH CHECK (auth.uid() = auth_user_id);
 
 -- ===== KEBIJAKAN: admins =====
--- Hanya service role (backend) yang bisa membaca tabel admins
--- Tidak ada akses langsung dari frontend
+-- Akses hanya melalui backend (service role bypass RLS)
 CREATE POLICY "admins_no_public_access" ON admins
     FOR ALL USING (false);
 
 -- ===== KEBIJAKAN: reports =====
--- Tidak ada akses publik langsung; backend menggunakan service role (bypass RLS)
--- Ini memastikan semua validasi dilakukan di backend
+-- Akses hanya melalui backend (service role bypass RLS)
 CREATE POLICY "reports_no_public_access" ON reports
     FOR ALL USING (false);
 
 -- ===== KEBIJAKAN: report_categories =====
--- Semua orang bisa membaca kategori aktif (diperlukan form pelaporan publik)
+-- Kategori aktif dapat dibaca publik untuk form pelaporan
 CREATE POLICY "report_categories_public_read" ON report_categories
     FOR SELECT USING (is_active = true);
 
 -- ===== KEBIJAKAN: report_evidences =====
--- Tidak ada akses publik; hanya service role
+-- Akses bukti terbatas pada backend (service role)
 CREATE POLICY "report_evidences_no_public_access" ON report_evidences
     FOR ALL USING (false);
 
 -- ===== KEBIJAKAN: report_status_histories =====
--- Tidak ada akses publik
+-- Riwayat status hanya diakses melalui backend
 CREATE POLICY "report_status_histories_no_public_access" ON report_status_histories
     FOR ALL USING (false);
 
 -- ===== KEBIJAKAN: education_materials =====
--- Semua orang bisa membaca materi yang dipublikasikan
+-- Materi edukasi yang dipublikasikan dapat dibaca oleh publik
 CREATE POLICY "education_materials_public_read" ON education_materials
     FOR SELECT USING (is_published = true);
 
 -- ===== KEBIJAKAN: support_resources =====
--- Semua orang bisa membaca sumber daya aktif
+-- Sumber daya pendampingan yang dipublikasikan dapat dibaca oleh publik
+-- Kolom aktual skema 0001: is_published (bukan is_active)
 CREATE POLICY "support_resources_public_read" ON support_resources
-    FOR SELECT USING (is_active = true);
+    FOR SELECT USING (is_published = true);
 
 -- ===== KEBIJAKAN: counseling_slots =====
--- Semua orang bisa membaca slot yang tersedia
+-- Slot konseling yang dipublikasikan dan berstatus 'available' dapat dibaca oleh publik
 CREATE POLICY "counseling_slots_public_read" ON counseling_slots
-    FOR SELECT USING (status = 'available');
+    FOR SELECT USING (is_published = true AND status = 'available');
 
 -- ===== KEBIJAKAN: counseling_bookings =====
--- Tidak ada akses publik; hanya service role
+-- Booking hanya diakses melalui backend (service role)
 CREATE POLICY "counseling_bookings_no_public_access" ON counseling_bookings
     FOR ALL USING (false);
-
--- =====================================================================
--- 5. STORAGE BUCKET SETUP
--- (Jalankan via Supabase Dashboard atau Storage API — tidak bisa via SQL)
--- =====================================================================
--- Instruksi manual:
--- 1. Buka Supabase Dashboard → Storage
--- 2. Klik "New Bucket"
--- 3. Nama bucket: report-evidence-private
--- 4. Pastikan "Public bucket" TIDAK dicentang (harus private)
--- 5. Klik Create
---
--- Storage RLS Policy (jalankan setelah bucket dibuat):
--- INSERT INTO storage.buckets (id, name, public) VALUES ('report-evidence-private', 'report-evidence-private', false);
---
--- Policy akses: Hanya service role yang bisa upload/download
--- (Backend menggunakan SUPABASE_SECRET_KEY yang bypass RLS storage)
 
 -- =====================================================================
 -- SELESAI

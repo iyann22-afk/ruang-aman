@@ -12,7 +12,8 @@ export class SupabaseEducationRepository implements IEducationRepository {
       .eq('is_published', true);
 
     if (search) {
-      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+      // Sesuai skema 0001: kolom adalah 'title' dan 'summary' (bukan description)
+      query = query.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
     }
     if (category) {
       query = query.eq('category', category);

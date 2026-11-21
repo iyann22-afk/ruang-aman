@@ -1,19 +1,25 @@
 import { config } from '../config/env.js';
 import { IAdminRepository } from '../repositories/interfaces/admin.repository.interface.js';
-import { adminRepository } from '../repositories/mock/admin.repository.js';
+import { getRepositoriesSync } from '../repositories/repository.factory.js';
 import { Admin } from '../types/index.js';
 
 export class AdminService {
-  constructor(private repo: IAdminRepository = adminRepository) {}
+  constructor(private repo?: IAdminRepository) {}
 
-  async login(email: string, password: string):Promise<{ token: string; admin: Admin }> {
-    // Check credentials against demo admin or any of the 3 mock accounts with password
-    const admin = await this.repo.findByEmail(email);
+  private getRepository(): IAdminRepository {
+    if (this.repo) return this.repo;
+    return getRepositoriesSync().adminRepository;
+  }
+
+  async login(email: string, password: string): Promise<{ token: string; admin: Admin }> {
+    const repo = this.getRepository();
+    // Check credentials against admin account
+    const admin = await repo.findByEmail(email);
     if (!admin) {
       throw new Error('Kredensial tidak valid: Akun petugas tidak ditemukan');
     }
 
-    // Demo password check
+    // Demo password check for development/testing
     const validPassword = config.demoAdmin.password;
     if (password !== validPassword && password !== 'PasswordDemo123!') {
       throw new Error('Kredensial tidak valid: Password demo salah');
@@ -29,7 +35,8 @@ export class AdminService {
   }
 
   async getProfile(adminId: string) {
-    const admin = await this.repo.findById(adminId);
+    const repo = this.getRepository();
+    const admin = await repo.findById(adminId);
     if (!admin) {
       throw new Error('Profil petugas tidak ditemukan');
     }
@@ -58,15 +65,16 @@ export class AdminService {
           'all_reports_read',
           'all_reports_write',
           'view_audit_trail',
+          'manage_counseling',
         ];
       case 'counselor':
         return [
-          'assigned_reports_read',
-          'counseling_referrals_write',
+          'all_reports_read',
+          'view_audit_trail',
           'manage_counseling',
         ];
       default:
-        return ['reports_read'];
+        return [];
     }
   }
 }

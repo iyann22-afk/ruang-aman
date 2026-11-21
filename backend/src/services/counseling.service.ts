@@ -3,28 +3,38 @@ import {
   CreateBookingDTO,
   ICounselingRepository,
 } from '../repositories/interfaces/counseling.repository.interface.js';
-import { adminRepository } from '../repositories/mock/admin.repository.js';
-import { counselingRepository } from '../repositories/mock/counseling.repository.js';
+import { getRepositoriesSync } from '../repositories/repository.factory.js';
 
 export class CounselingService {
   constructor(
-    private counselingRepo: ICounselingRepository = counselingRepository,
-    private adminRepo: IAdminRepository = adminRepository
+    private counselingRepo?: ICounselingRepository,
+    private adminRepo?: IAdminRepository
   ) {}
 
+  private getCounselingRepository(): ICounselingRepository {
+    if (this.counselingRepo) return this.counselingRepo;
+    return getRepositoriesSync().counselingRepository;
+  }
+
+  private getAdminRepository(): IAdminRepository {
+    if (this.adminRepo) return this.adminRepo;
+    return getRepositoriesSync().adminRepository;
+  }
+
   async getSlots() {
-    const slots = await this.counselingRepo.listSlots();
-    const admins = await this.adminRepo.listAdmins();
+    const slots = await this.getCounselingRepository().listSlots();
+    const admins = await this.getAdminRepository().listAdmins();
     const adminMap = new Map(admins.map((a) => [a.id, a.full_name]));
 
     return slots.map((s) => ({
       ...s,
-      counselor_name: adminMap.get(s.counselor_admin_id) || 'Guru Bimbingan Konseling',
+      counselor_name: (s.counselor_admin_id && adminMap.get(s.counselor_admin_id)) || 'Guru Bimbingan Konseling',
     }));
   }
 
   async bookSlot(dto: CreateBookingDTO) {
-    const slot = await this.counselingRepo.findSlotById(dto.slot_id);
+    const counselingRepo = this.getCounselingRepository();
+    const slot = await counselingRepo.findSlotById(dto.slot_id);
     if (!slot) {
       throw new Error('Slot jadwal konseling tidak ditemukan');
     }
@@ -33,7 +43,7 @@ export class CounselingService {
       throw new Error('Slot jadwal konseling ini sudah tidak tersedia');
     }
 
-    const booking = await this.counselingRepo.createBooking(dto);
+    const booking = await counselingRepo.createBooking(dto);
     return {
       ...booking,
       session_mode: slot.session_mode,
@@ -44,7 +54,7 @@ export class CounselingService {
   }
 
   async getSupportResources() {
-    return this.counselingRepo.listSupportResources();
+    return this.getCounselingRepository().listSupportResources();
   }
 }
 

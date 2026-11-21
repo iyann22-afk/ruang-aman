@@ -22,9 +22,12 @@ export class SupabaseUserProfileRepository implements IUserProfileRepository {
       .from('user_profiles')
       .select('*')
       .eq('auth_user_id', authUserId)
-      .single();
-    if (error || !data) return null;
-    return data as UserProfile;
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Gagal memuat profil pengguna: ${error.message}`);
+    }
+    return (data as UserProfile) || null;
   }
 
   async upsertProfile(
@@ -33,22 +36,47 @@ export class SupabaseUserProfileRepository implements IUserProfileRepository {
     avatarUrl?: string
   ): Promise<UserProfile> {
     if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
+
+    // Cek apakah profil sudah terdaftar berdasarkan auth_user_id
+    const existing = await this.findByAuthUserId(authUserId);
+
+    if (existing) {
+      // Pertahankan primary key (id UUID) asli yang sudah ada.
+      // Jangan pernah generate id baru saat login ulang agar relasi foreign key tetap utuh.
+      const updatePayload: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (fullName !== undefined) updatePayload.full_name = fullName ?? null;
+      if (avatarUrl !== undefined) updatePayload.avatar_url = avatarUrl ?? null;
+
+      const { data, error } = await supabaseAdmin
+        .from('user_profiles')
+        .update(updatePayload)
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error || !data) {
+        throw new Error(`Gagal memperbarui profil pengguna: ${error?.message}`);
+      }
+      return data as UserProfile;
+    }
+
+    // Buat profil baru untuk pengguna pertama kali
+    const newId = uuidv4();
     const { data, error } = await supabaseAdmin
       .from('user_profiles')
-      .upsert(
-        {
-          id: uuidv4(),
-          auth_user_id: authUserId,
-          full_name: fullName ?? null,
-          avatar_url: avatarUrl ?? null,
-        },
-        { onConflict: 'auth_user_id' }
-      )
+      .insert({
+        id: newId,
+        auth_user_id: authUserId,
+        full_name: fullName ?? null,
+        avatar_url: avatarUrl ?? null,
+      })
       .select()
       .single();
 
     if (error || !data) {
-      throw new Error(`Gagal menyimpan profil pengguna: ${error?.message}`);
+      throw new Error(`Gagal membuat profil pengguna baru: ${error?.message}`);
     }
     return data as UserProfile;
   }

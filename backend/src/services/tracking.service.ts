@@ -1,35 +1,46 @@
 import { IReportRepository } from '../repositories/interfaces/report.repository.interface.js';
-import { reportRepository } from '../repositories/mock/report.repository.js';
+import { getRepositoriesSync } from '../repositories/repository.factory.js';
 
 export class TrackingService {
-  constructor(private repo: IReportRepository = reportRepository) {}
+  constructor(private repo?: IReportRepository) {}
+
+  private getRepository(): IReportRepository {
+    if (this.repo) return this.repo;
+    return getRepositoriesSync().reportRepository;
+  }
 
   async trackReport(trackingCode: string) {
     if (!trackingCode || trackingCode.trim() === '') {
       throw new Error('Kode pelacakan wajib diisi');
     }
 
-    const report = await this.repo.findByTrackingCode(trackingCode.trim());
+    const repo = this.getRepository();
+    const report = await repo.findByTrackingCode(trackingCode.trim());
     if (!report) {
       return null;
     }
 
-    const category = await this.repo.getCategoryById(report.category_id);
-    const histories = await this.repo.getHistoriesByReportId(report.id);
+    const category = await repo.getCategoryById(report.category_id);
+    const histories = await repo.getHistoriesByReportId(report.id);
 
-    // Filter timeline for public view: ONLY public_message, NO internal_note, NO admin identifiers
+    // Filter timeline untuk tampilan publik:
+    // HANYA public_message yang aman; TIDAK ADA internal_note atau identitas admin
     const publicTimeline = histories.map((h) => ({
       status: h.new_status,
       created_at: h.created_at,
       public_message: h.public_message,
     }));
 
-    // Strict privacy guarantee: DO NOT expose chronology, reporter_name, reporter_contact, internal_note
+    // Strict Privacy Guarantee:
+    // 1. Lokasi kejadian sensitif disamarkan demi privasi & keamanan pelapor/korban
+    // 2. TIDAK menampilkan kronologi lengkap
+    // 3. TIDAK menampilkan identitas/kontak pelapor
+    // 4. TIDAK menampilkan catatan internal tim penanganan
     return {
       tracking_code: report.tracking_code,
       category_name: category ? category.name : 'Kategori Umum',
       incident_date: report.incident_date,
-      incident_location: report.incident_location,
+      incident_location: 'Lingkungan Sekolah (Dirahasiakan demi perlindungan)',
       status: report.status,
       created_at: report.created_at,
       updated_at: report.updated_at,

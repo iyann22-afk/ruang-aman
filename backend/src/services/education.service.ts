@@ -1,19 +1,24 @@
 import { IEducationRepository } from '../repositories/interfaces/education.repository.interface.js';
-import { educationRepository } from '../repositories/mock/education.repository.js';
+import { getRepositoriesSync } from '../repositories/repository.factory.js';
 
 export class EducationService {
-  constructor(private repo: IEducationRepository = educationRepository) {}
+  constructor(private repo?: IEducationRepository) {}
+
+  private getRepository(): IEducationRepository {
+    if (this.repo) return this.repo;
+    return getRepositoriesSync().educationRepository;
+  }
 
   async getMaterials(search?: string, category?: string) {
-    return this.repo.listMaterials(search, category);
+    return this.getRepository().listMaterials(search, category);
   }
 
   async getMaterialBySlug(slug: string) {
-    return this.repo.findBySlug(slug);
+    return this.getRepository().findBySlug(slug);
   }
 
   async getCategories() {
-    return this.repo.getCategories();
+    return this.getRepository().getCategories();
   }
 }
 

@@ -2,10 +2,11 @@
  * Repository Factory
  *
  * Menentukan implementasi repository yang digunakan:
- * - Production / USE_SUPABASE=true → Supabase repositories (PostgreSQL)
- * - Development (default) → Mock in-memory repositories
+ * - Production (NODE_ENV=production atau USE_SUPABASE=true) -> Supabase Repositories (PostgreSQL)
+ * - Development (default) -> Mock In-Memory Repositories
  *
- * Semua service harus menggunakan factory ini, bukan import langsung mock.
+ * KEAMANAN PRODUCTION:
+ * Dilarang keras melakukan silent fallback ke Mock Repository pada lingkungan produksi.
  */
 
 import { IAdminRepository } from './interfaces/admin.repository.interface.js';
@@ -16,73 +17,98 @@ import { MockAdminRepository } from './mock/admin.repository.js';
 import { MockCounselingRepository } from './mock/counseling.repository.js';
 import { MockEducationRepository } from './mock/education.repository.js';
 import { MockReportRepository } from './mock/report.repository.js';
+import { SupabaseAdminRepository } from './supabase/supabase-admin.repository.js';
+import { SupabaseCounselingRepository } from './supabase/supabase-counseling.repository.js';
+import { SupabaseEducationRepository } from './supabase/supabase-education.repository.js';
+import { SupabaseReportRepository } from './supabase/supabase-report.repository.js';
+import {
+  IUserProfileRepository,
+  SupabaseUserProfileRepository,
+} from './supabase/supabase-user-profile.repository.js';
 
-const useSupabase =
-  process.env.NODE_ENV === 'production' || process.env.USE_SUPABASE === 'true';
-
-// ======= Lazy load Supabase repos hanya jika diperlukan =======
-async function getSupabaseRepos() {
-  const [
-    { SupabaseReportRepository },
-    { SupabaseEducationRepository },
-    { SupabaseCounselingRepository },
-    { SupabaseAdminRepository },
-  ] = await Promise.all([
-    import('./supabase/supabase-report.repository.js'),
-    import('./supabase/supabase-education.repository.js'),
-    import('./supabase/supabase-counseling.repository.js'),
-    import('./supabase/supabase-admin.repository.js'),
-  ]);
-
-  return {
-    reportRepository: new SupabaseReportRepository() as IReportRepository,
-    educationRepository: new SupabaseEducationRepository() as IEducationRepository,
-    counselingRepository: new SupabaseCounselingRepository() as ICounselingRepository,
-    adminRepository: new SupabaseAdminRepository() as IAdminRepository,
-  };
-}
-
-function getMockRepos() {
-  return {
-    reportRepository: new MockReportRepository() as IReportRepository,
-    educationRepository: new MockEducationRepository() as IEducationRepository,
-    counselingRepository: new MockCounselingRepository() as ICounselingRepository,
-    adminRepository: new MockAdminRepository() as IAdminRepository,
-  };
-}
-
-// Cache instance agar tidak dibuat ulang setiap request
-let _repositories: {
+export interface RepositoryContainer {
   reportRepository: IReportRepository;
   educationRepository: IEducationRepository;
   counselingRepository: ICounselingRepository;
   adminRepository: IAdminRepository;
-} | null = null;
+  userProfileRepository?: IUserProfileRepository;
+  isSupabase: boolean;
+}
 
-export async function getRepositories() {
+export function isProductionOrSupabase(): boolean {
+  return process.env.NODE_ENV === 'production' || process.env.USE_SUPABASE === 'true';
+}
+
+function createSupabaseRepos(): RepositoryContainer {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      '[CRITICAL_SECURITY] Mode production atau USE_SUPABASE=true terdeteksi, namun SUPABASE_URL atau SUPABASE_SECRET_KEY tidak terkonfigurasi. Sistem menolak fallback ke Mock Repository demi integritas data.'
+    );
+  }
+
+  return {
+    reportRepository: new SupabaseReportRepository(),
+    educationRepository: new SupabaseEducationRepository(),
+    counselingRepository: new SupabaseCounselingRepository(),
+    adminRepository: new SupabaseAdminRepository(),
+    userProfileRepository: new SupabaseUserProfileRepository(),
+    isSupabase: true,
+  };
+}
+
+function createMockRepos(): RepositoryContainer {
+  return {
+    reportRepository: new MockReportRepository(),
+    educationRepository: new MockEducationRepository(),
+    counselingRepository: new MockCounselingRepository(),
+    adminRepository: new MockAdminRepository(),
+    isSupabase: false,
+  };
+}
+
+let _repositories: RepositoryContainer | null = null;
+
+/**
+ * Inisialisasi repositories secara asinkron atau sinkron.
+ */
+export async function getRepositories(): Promise<RepositoryContainer> {
   if (_repositories) return _repositories;
 
-  if (useSupabase) {
-    _repositories = await getSupabaseRepos();
-    console.info('[RepositoryFactory] Menggunakan Supabase repositories (production)');
+  if (isProductionOrSupabase()) {
+    _repositories = createSupabaseRepos();
+    console.info('[RepositoryFactory] Menggunakan Supabase Repositories (PostgreSQL / Production)');
   } else {
-    _repositories = getMockRepos();
-    console.info('[RepositoryFactory] Menggunakan Mock repositories (development)');
+    _repositories = createMockRepos();
+    console.info('[RepositoryFactory] Menggunakan Mock Repositories (In-Memory / Development)');
   }
 
   return _repositories;
 }
 
-// Synchronous getter (menggunakan cache) — gunakan setelah init
-export function getRepositoriesSync() {
+/**
+ * Pengambilan repositori secara sinkron (dengan proteksi ketat agar tidak ada fallback ke mock di production).
+ */
+export function getRepositoriesSync(): RepositoryContainer {
   if (!_repositories) {
-    // Fallback ke mock jika belum diinisialisasi
-    _repositories = getMockRepos();
+    if (isProductionOrSupabase()) {
+      _repositories = createSupabaseRepos();
+    } else {
+      _repositories = createMockRepos();
+    }
   }
   return _repositories;
 }
 
-// Inisialisasi awal saat app start
 export async function initRepositories(): Promise<void> {
   await getRepositories();
+}
+
+/**
+ * Hanya untuk keperluan unit test: mereset instance repository singleton.
+ */
+export function resetRepositoriesForTest(): void {
+  _repositories = null;
 }

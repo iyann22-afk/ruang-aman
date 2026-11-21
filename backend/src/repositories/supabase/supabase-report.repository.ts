@@ -39,7 +39,7 @@ export class SupabaseReportRepository implements IReportRepository {
         reporter_name: dto.identity_mode === 'anonymous' ? null : dto.reporter_name ?? null,
         reporter_contact:
           dto.identity_mode === 'anonymous' ? null : dto.reporter_contact ?? null,
-        reporter_user_id: null, // Selalu null saat create; diisi terpisah jika user consent
+        reporter_user_id: null, // Default null; dikaitkan terpisah atas persetujuan pengguna
         privacy_acknowledged: dto.privacy_acknowledged,
         status: 'submitted',
       })
@@ -49,7 +49,24 @@ export class SupabaseReportRepository implements IReportRepository {
     if (error || !data) {
       throw new Error(`Gagal membuat laporan: ${error?.message}`);
     }
-    return data as Report;
+
+    const report = data as Report;
+
+    // Catat riwayat status inisial
+    try {
+      await this.appendStatusHistory({
+        report_id: report.id,
+        changed_by_admin_id: null,
+        previous_status: null,
+        new_status: 'submitted',
+        public_message: 'Laporan berhasil dibuat dan masuk ke antrean verifikasi tim Satgas.',
+        internal_note: 'Laporan baru diterima oleh sistem.',
+      });
+    } catch (e) {
+      console.warn('Gagal mencatat status history inisial:', e);
+    }
+
+    return report;
   }
 
   async findById(id: string): Promise<Report | null> {
@@ -106,14 +123,26 @@ export class SupabaseReportRepository implements IReportRepository {
   async updateStatus(
     id: string,
     status: ReportStatus,
-    _adminId?: string,
-    _publicMessage?: string,
-    _internalNote?: string
+    adminId?: string,
+    publicMessage?: string,
+    internalNote?: string
   ): Promise<Report | null> {
     if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
 
-    const updateData: Record<string, unknown> = { status };
-    if (status === 'resolved') updateData.resolved_at = new Date().toISOString();
+    const current = await this.findById(id);
+    if (!current) return null;
+    const previousStatus = current.status;
+
+    const updateData: Record<string, unknown> = {
+      status,
+      updated_at: new Date().toISOString(),
+    };
+    if (status === 'resolved' || status === 'closed') {
+      updateData.resolved_at = new Date().toISOString();
+    }
+    if (adminId) {
+      updateData.assigned_admin_id = adminId;
+    }
 
     const { data, error } = await supabaseAdmin
       .from('reports')
@@ -123,6 +152,21 @@ export class SupabaseReportRepository implements IReportRepository {
       .single();
 
     if (error || !data) return null;
+
+    // Catat ke audit trail / status history
+    try {
+      await this.appendStatusHistory({
+        report_id: id,
+        changed_by_admin_id: adminId || null,
+        previous_status: previousStatus,
+        new_status: status,
+        public_message: publicMessage || null,
+        internal_note: internalNote || null,
+      });
+    } catch (e) {
+      console.warn('Gagal mencatat perubahan status history:', e);
+    }
+
     return data as Report;
   }
 
