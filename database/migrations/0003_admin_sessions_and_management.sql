@@ -84,7 +84,7 @@ DECLARE
     v_idle_limit  INTERVAL := INTERVAL '15 minutes';
     v_result      JSONB;
 BEGIN
-    -- 1. Cari sesi aktif berdasarkan token_hash
+    -- 1. Cari sesi aktif berdasarkan token_hash dengan row lock FOR UPDATE
     SELECT * INTO v_session
     FROM admin_sessions
     WHERE session_token_hash = p_token_hash
@@ -102,7 +102,7 @@ BEGIN
 
         -- Cek apakah sesi sudah idle melebihi 15 menit
         IF (v_now - v_session.last_activity_at) > v_idle_limit THEN
-            -- Tandai sesi sebagai revoked/expired tanpa RAISE EXCEPTION agar ter-commit
+            -- Tandai sesi sebagai revoked/expired secara konsisten
             UPDATE admin_sessions
             SET is_revoked = TRUE
             WHERE id = v_session.id;
@@ -131,7 +131,8 @@ BEGIN
             'expires_at', v_now + v_idle_limit
         );
     ELSE
-        -- 2. Buat sesi baru dengan ON CONFLICT untuk menangani race condition
+        -- 2. Buat sesi baru dengan ON CONFLICT untuk menangani race condition request bersamaan
+        -- Proteksi: ON CONFLICT TIDAK dapat memperpanjang sesi yang sudah expired (> 15 menit) atau revoked
         INSERT INTO admin_sessions (
             admin_id,
             auth_user_id,
@@ -160,9 +161,37 @@ BEGIN
             ip_address       = COALESCE(EXCLUDED.ip_address, admin_sessions.ip_address),
             user_agent       = COALESCE(EXCLUDED.user_agent, admin_sessions.user_agent)
         WHERE admin_sessions.is_revoked = FALSE
+          AND (v_now - admin_sessions.last_activity_at) <= v_idle_limit
         RETURNING row_to_json(admin_sessions)::JSONB INTO v_result;
 
         IF v_result IS NULL THEN
+            -- Record yang sudah ada ternyata sudah di-revoke atau telah expired melebihi 15 menit
+            SELECT * INTO v_session
+            FROM admin_sessions
+            WHERE session_token_hash = p_token_hash
+            FOR UPDATE;
+
+            IF FOUND THEN
+                IF v_session.is_revoked THEN
+                    RETURN jsonb_build_object(
+                        'valid', false,
+                        'code', 'SESSION_REVOKED',
+                        'message', 'Sesi petugas telah dicabut atau dinonaktifkan'
+                    );
+                ELSE
+                    -- Tandai expired sebagai revoked secara permanen
+                    UPDATE admin_sessions
+                    SET is_revoked = TRUE
+                    WHERE id = v_session.id;
+
+                    RETURN jsonb_build_object(
+                        'valid', false,
+                        'code', 'SESSION_IDLE_TIMEOUT',
+                        'message', 'Sesi Anda berakhir karena tidak ada aktivitas selama 15 menit.'
+                    );
+                END IF;
+            END IF;
+
             RETURN jsonb_build_object(
                 'valid', false,
                 'code', 'SESSION_REVOKED',
@@ -185,8 +214,8 @@ $$;
 -- 5. FUNCTION & RPC: VALIDATE ADMIN SESSION (READ-ONLY CHECK)
 -- =====================================================================
 -- Memvalidasi sesi pada request API biasa TANPA memperbarui waktu aktivitas.
--- Mengembalikan objek JSON tanpa memicu ROLLBACK RAISE EXCEPTION sehingga
--- update status revoked pada sesi expired tetap tersimpan permanen.
+-- Menggunakan penguncian FOR UPDATE agar tidak salah menandai sesi expired
+-- ketika transaksi heartbeat yang sah sedang berjalan bersamaan.
 CREATE OR REPLACE FUNCTION validate_admin_session(
     p_token_hash VARCHAR(64)
 )
@@ -200,7 +229,8 @@ DECLARE
 BEGIN
     SELECT * INTO v_session
     FROM admin_sessions
-    WHERE session_token_hash = p_token_hash;
+    WHERE session_token_hash = p_token_hash
+    FOR UPDATE;
 
     IF NOT FOUND THEN
         RETURN jsonb_build_object(
@@ -220,7 +250,7 @@ BEGIN
     END IF;
 
     IF (v_now - v_session.last_activity_at) > v_idle_limit THEN
-        -- Tandai sesi sebagai revoked secara permanen (tanpa dibatalkan oleh RAISE EXCEPTION)
+        -- Tandai sesi sebagai revoked secara permanen tanpa dibatalkan oleh RAISE EXCEPTION
         UPDATE admin_sessions
         SET is_revoked = TRUE
         WHERE id = v_session.id;
@@ -233,6 +263,7 @@ BEGIN
         );
     END IF;
 
+    -- Validasi read-only: mengembalikan valid: true TANPA mengubah last_activity_at
     RETURN jsonb_build_object(
         'valid', true,
         'id', v_session.id,

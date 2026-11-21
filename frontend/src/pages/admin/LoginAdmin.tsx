@@ -69,6 +69,21 @@ export const LoginAdmin: React.FC = () => {
         title: 'Verifikasi Gagal',
         message: 'Gagal menghubungi server verifikasi petugas. Pastikan koneksi internet stabil dan coba kembali.',
       });
+    } else if (errParam === 'revoke_failed' || searchParams.get('warning') === 'revoke_failed') {
+      setNotice({
+        type: 'warning',
+        title: 'Peringatan: Pencabutan Sesi Server Gagal',
+        message: 'Sesi browser Anda telah ditutup secara lokal, namun pencabutan sesi di server backend gagal dikonfirmasi. Pastikan Anda menutup seluruh jendela peramban untuk mencegah akses tidak sah jika menggunakan perangkat bersama.',
+      });
+    }
+
+    const noticeParam = searchParams.get('notice');
+    if (noticeParam === 'logged_out') {
+      setNotice({
+        type: 'info',
+        title: 'Berhasil Keluar',
+        message: 'Sesi petugas Anda telah berhasil diakhiri dengan aman.',
+      });
     }
   }, [searchParams]);
 

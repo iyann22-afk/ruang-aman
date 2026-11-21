@@ -31,6 +31,8 @@ export class AdminController {
     }
     const token = authHeader.split(' ')[1];
 
+    const shouldInit = req.query.init === 'true' || req.method === 'POST';
+
     try {
       // 1. Jika demo token di development
       if (token.startsWith('demo-token-')) {
@@ -43,8 +45,17 @@ export class AdminController {
           return;
         }
 
-        // Touch session pada login/verify
-        await sessionService.touchSession(token, admin.id, undefined, req.ip, req.headers['user-agent'] as string);
+        // HANYA perbarui/inisialisasi sesi jika shouldInit
+        if (shouldInit) {
+          await sessionService.touchSession(token, admin.id, undefined, req.ip, req.headers['user-agent'] as string);
+        } else {
+          // Validasi read-only tanpa memperpanjang idle timer
+          const val = await sessionService.validateSession(token, admin.id);
+          if (!val.valid) {
+            res.status(401).json({ success: false, code: val.code, message: val.message });
+            return;
+          }
+        }
 
         res.json({
           success: true,
@@ -70,22 +81,34 @@ export class AdminController {
       // 3. Verifikasi hak akses admin & tautkan akun jika email cocok (Account Linking aman)
       const admin = await adminService.verifyAndLinkAdmin(user.id, user.email || '');
 
-      // 4. Catat dan inisialisasi/perbarui sesi aktif via touchSession
-      const sessionResult = await sessionService.touchSession(
-        token,
-        admin.id,
-        user.id,
-        req.ip,
-        req.headers['user-agent'] as string
-      );
+      // 4. Inisialisasi sesi atau validasi read-only
+      if (shouldInit) {
+        const sessionResult = await sessionService.touchSession(
+          token,
+          admin.id,
+          user.id,
+          req.ip,
+          req.headers['user-agent'] as string
+        );
 
-      if (!sessionResult.valid) {
-        res.status(401).json({
-          success: false,
-          code: sessionResult.code,
-          message: sessionResult.message || 'Sesi tidak valid',
-        });
-        return;
+        if (!sessionResult.valid) {
+          res.status(401).json({
+            success: false,
+            code: sessionResult.code,
+            message: sessionResult.message || 'Sesi tidak valid',
+          });
+          return;
+        }
+      } else {
+        const sessionResult = await sessionService.validateSession(token, admin.id, user.id);
+        if (!sessionResult.valid) {
+          res.status(401).json({
+            success: false,
+            code: sessionResult.code,
+            message: sessionResult.message || 'Sesi tidak valid',
+          });
+          return;
+        }
       }
 
       res.json({
@@ -105,6 +128,11 @@ export class AdminController {
         message: err.message || 'Verifikasi petugas gagal',
       });
     }
+  }
+
+  async initSession(req: Request, res: Response, next: NextFunction): Promise<void> {
+    req.query.init = 'true';
+    return this.verify(req, res, next);
   }
 
   async getProfile(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {

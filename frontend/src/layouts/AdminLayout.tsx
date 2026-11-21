@@ -156,11 +156,15 @@ export const AdminLayout: React.FC = () => {
   // Handler logout manual
   const handleLogout = async () => {
     try {
-      await signOut();
+      const res = await signOut();
+      if (res && !res.serverRevoked) {
+        navigate('/admin/login?warning=revoke_failed');
+      } else {
+        navigate('/admin/login?notice=logged_out');
+      }
     } catch {
-      // ignore
+      navigate('/admin/login?warning=revoke_failed');
     }
-    navigate('/admin/login');
   };
 
   const getRoleLabel = (role?: string) => {

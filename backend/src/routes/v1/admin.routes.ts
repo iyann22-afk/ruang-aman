@@ -26,7 +26,12 @@ router.post('/auth/login', validateBody(adminLoginSchema), (req, res, next) => {
   adminController.login(req, res, next);
 });
 
-// Verifikasi Supabase token untuk Google OAuth admin login & Account Linking aman
+// Inisialisasi sesi admin saat login (menjalankan touchSession)
+router.post('/auth/init', (req, res, next) => {
+  adminController.initSession(req, res, next);
+});
+
+// Verifikasi Supabase token untuk Google OAuth admin login & Account Linking aman (read-only secara default)
 router.get('/auth/verify', (req, res, next) => {
   adminController.verify(req, res, next);
 });

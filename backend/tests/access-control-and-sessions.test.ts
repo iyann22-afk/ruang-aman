@@ -707,4 +707,194 @@ describe('Access Control, Admin Management & Session Security Tests', () => {
       expect(t1).toBeGreaterThan(t0);
     });
   });
+
+  // =========================================================================
+  // 7. FINAL AUTH EVENT, TOUCH RPC FAIL-CLOSED & CONCURRENT SESSION VALIDATION
+  // =========================================================================
+  describe('7. Final Auth Event, Touch RPC Fail-Closed & Session Fixes', () => {
+    it('1. TOKEN_REFRESHED tidak memanggil endpoint touch sesi dan tidak mereset idle timer', async () => {
+      const token = 'demo-token-case_manager-a0000001-0000-0000-0000-000000000003';
+      const adminId = 'a0000001-0000-0000-0000-000000000003';
+
+      // Set waktu aktivitas sesi 8 menit yang lalu
+      const eightMinutesAgo = Date.now() - 8 * 60 * 1000;
+      sessionService.simulateLastActivity(token, eightMinutesAgo, adminId);
+      expect(sessionService.getLastActivityForTest(token, adminId)).toBe(eightMinutesAgo);
+
+      // Endpoint GET /admin/auth/verify (read-only) dipanggil tanpa query ?init=true
+      const verifyRes = await request(app)
+        .get('/api/v1/admin/auth/verify')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(verifyRes.status).toBe(200);
+      expect(verifyRes.body.success).toBe(true);
+
+      // Waktu aktivitas sesi HARUS TETAP 8 menit yang lalu (idle timer tidak ter-reset oleh token refresh / read-only verify)
+      const afterActivity = sessionService.getLastActivityForTest(token, adminId);
+      expect(afterActivity).toBe(eightMinutesAgo);
+    });
+
+    it('2. INITIAL_SESSION dan SIGNED_IN tetap memverifikasi admin dengan benar (dan inisialisasi sesi pada login)', async () => {
+      const token = 'demo-token-super_admin-a0000001-0000-0000-0000-000000000001';
+      const adminId = 'a0000001-0000-0000-0000-000000000001';
+
+      // 1. Alur SIGNED_IN (login baru) menggunakan ?init=true atau POST /auth/init
+      const initRes = await request(app)
+        .get('/api/v1/admin/auth/verify?init=true')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(initRes.status).toBe(200);
+      expect(initRes.body.success).toBe(true);
+      expect(initRes.body.admin.role).toBe('super_admin');
+      expect(initRes.body.admin.is_active).toBe(true);
+
+      // Waktu aktivitas terinisialisasi
+      const lastActivity = sessionService.getLastActivityForTest(token, adminId);
+      expect(lastActivity).not.toBeNull();
+
+      // 2. Alur INITIAL_SESSION (reload halaman) menggunakan GET /admin/auth/verify read-only
+      const readOnlyRes = await request(app)
+        .get('/api/v1/admin/auth/verify')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(readOnlyRes.status).toBe(200);
+      expect(readOnlyRes.body.success).toBe(true);
+      expect(readOnlyRes.body.admin.email).toBe('admin@ruangaman.id');
+    });
+
+    it('3. RPC touch dengan data null ditolak secara fail-closed', async () => {
+      const { supabaseAdmin } = await import('../src/repositories/supabase/supabase.client.js');
+      if (supabaseAdmin) {
+        const rpcSpy = vi.spyOn(supabaseAdmin, 'rpc').mockResolvedValueOnce({
+          data: null,
+          error: null,
+        } as any);
+
+        const originalEnv = process.env.USE_SUPABASE;
+        process.env.USE_SUPABASE = 'true';
+
+        try {
+          const res = await sessionService.touchSession(
+            'some-dummy-token-null-data',
+            'a0000001-0000-0000-0000-000000000001'
+          );
+
+          expect(res.valid).toBe(false);
+          expect(res.code).toBe('INVALID_TOKEN');
+        } finally {
+          process.env.USE_SUPABASE = originalEnv;
+          rpcSpy.mockRestore();
+        }
+      }
+    });
+
+    it('4. RPC touch dengan data malformed ditolak secara fail-closed', async () => {
+      const { supabaseAdmin } = await import('../src/repositories/supabase/supabase.client.js');
+      if (supabaseAdmin) {
+        // Data malformed tanpa valid boolean eksplisit
+        const rpcSpy = vi.spyOn(supabaseAdmin, 'rpc').mockResolvedValueOnce({
+          data: { foo: 'bar', unknown_field: 123 },
+          error: null,
+        } as any);
+
+        const originalEnv = process.env.USE_SUPABASE;
+        process.env.USE_SUPABASE = 'true';
+
+        try {
+          const res = await sessionService.touchSession(
+            'some-dummy-token-malformed-data',
+            'a0000001-0000-0000-0000-000000000001'
+          );
+
+          expect(res.valid).toBe(false);
+          expect(res.code).toBe('INVALID_TOKEN');
+        } finally {
+          process.env.USE_SUPABASE = originalEnv;
+          rpcSpy.mockRestore();
+        }
+      }
+    });
+
+    it('5. RPC touch dengan data.valid === false menggunakan code dan message dari database', async () => {
+      const { supabaseAdmin } = await import('../src/repositories/supabase/supabase.client.js');
+      if (supabaseAdmin) {
+        const rpcSpy = vi.spyOn(supabaseAdmin, 'rpc').mockResolvedValueOnce({
+          data: {
+            valid: false,
+            code: 'SESSION_IDLE_TIMEOUT',
+            message: 'Sesi Anda berakhir karena tidak ada aktivitas selama 15 menit.',
+          },
+          error: null,
+        } as any);
+
+        const originalEnv = process.env.USE_SUPABASE;
+        process.env.USE_SUPABASE = 'true';
+
+        try {
+          const res = await sessionService.touchSession(
+            'some-dummy-token-timeout-data',
+            'a0000001-0000-0000-0000-000000000001'
+          );
+
+          expect(res.valid).toBe(false);
+          expect(res.code).toBe('SESSION_IDLE_TIMEOUT');
+          expect(res.message).toContain('15 menit');
+        } finally {
+          process.env.USE_SUPABASE = originalEnv;
+          rpcSpy.mockRestore();
+        }
+      }
+    });
+
+    it('6. Sesi revoked tidak dapat diaktifkan kembali oleh concurrent touch', async () => {
+      const targetToken = 'demo-token-counselor-revoked-concurrency-test';
+      const adminId = 'a0000001-0000-0000-0000-000000000002';
+
+      // 1. Inisialisasi sesi awal
+      await sessionService.touchSession(targetToken, adminId);
+
+      // 2. Cabut sesi (revoke)
+      await sessionService.revokeSession(targetToken, adminId);
+      expect(sessionService.isSessionRevokedForTest(targetToken, adminId)).toBe(true);
+
+      // 3. Jalankan 2 request touch secara bersamaan (concurrent)
+      const [touch1, touch2] = await Promise.all([
+        sessionService.touchSession(targetToken, adminId),
+        sessionService.touchSession(targetToken, adminId),
+      ]);
+
+      // Keduanya HARUS ditolak (SESSION_REVOKED)
+      expect(touch1.valid).toBe(false);
+      expect(touch1.code).toBe('SESSION_REVOKED');
+      expect(touch2.valid).toBe(false);
+      expect(touch2.code).toBe('SESSION_REVOKED');
+
+      // Status sesi tetap revoked, TIDAK diaktifkan kembali
+      expect(sessionService.isSessionRevokedForTest(targetToken, adminId)).toBe(true);
+    });
+
+    it('7. Request validasi tidak mengubah last_activity_at ketika heartbeat berjalan', async () => {
+      const testToken = 'demo-token-validation-heartbeat-race';
+      const adminId = 'a0000001-0000-0000-0000-000000000003';
+
+      // Inisialisasi sesi pada T0 (10 menit yang lalu)
+      const t0 = Date.now() - 10 * 60 * 1000;
+      sessionService.simulateLastActivity(testToken, t0, adminId);
+
+      // Request validasi biasa
+      const val1 = await sessionService.validateSession(testToken, adminId);
+      expect(val1.valid).toBe(true);
+      expect(sessionService.getLastActivityForTest(testToken, adminId)).toBe(t0);
+
+      // Jalankan heartbeat yang sah
+      await sessionService.touchSession(testToken, adminId);
+      const t1 = sessionService.getLastActivityForTest(testToken, adminId);
+      expect(t1).toBeGreaterThan(t0);
+
+      // Validasi kembali -> last_activity_at tetap T1, tidak diubah
+      const val2 = await sessionService.validateSession(testToken, adminId);
+      expect(val2.valid).toBe(true);
+      expect(sessionService.getLastActivityForTest(testToken, adminId)).toBe(t1);
+    });
+  });
 });

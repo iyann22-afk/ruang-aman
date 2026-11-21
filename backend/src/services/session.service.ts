@@ -70,7 +70,7 @@ export class SessionService {
     return crypto.createHash('sha256').update(sessionKey).digest('hex');
   }
 
-  private shouldEnforceSupabase(): boolean {
+  public shouldEnforceSupabase(): boolean {
     return process.env.NODE_ENV === 'production' || process.env.USE_SUPABASE === 'true';
   }
 
@@ -136,22 +136,42 @@ export class SessionService {
           };
         }
 
-        // Parse respons JSONB terstruktur dari RPC
-        if (data) {
-          if (data.valid === false) {
-            return {
-              valid: false,
-              code: data.code || 'INVALID_TOKEN',
-              message: data.message || 'Sesi tidak valid.',
-            };
-          }
+        // 1. Data null atau falsy
+        if (!data) {
+          return {
+            valid: false,
+            code: 'SESSION_NOT_FOUND',
+            message: 'Sesi petugas tidak ditemukan atau telah berakhir.',
+          };
+        }
+
+        // 2. Data bukan object
+        if (typeof data !== 'object') {
+          return {
+            valid: false,
+            code: 'INVALID_TOKEN',
+            message: 'Struktur respons verifikasi sesi tidak valid.',
+          };
+        }
+
+        // 3. Data secara eksplisit menyatakan valid === false
+        if (data.valid === false) {
+          return {
+            valid: false,
+            code: data.code || 'INVALID_TOKEN',
+            message: data.message || 'Sesi tidak valid.',
+          };
+        }
+
+        // 4. HANYA menerima jika valid === true
+        if (data.valid === true) {
           return { valid: true, lastActivityAt: data.last_activity_at };
         }
 
         return {
           valid: false,
-          code: 'SESSION_NOT_FOUND',
-          message: 'Sesi petugas tidak ditemukan atau telah berakhir.',
+          code: 'INVALID_TOKEN',
+          message: 'Status validasi sesi tidak dapat dikonfirmasi.',
         };
       } catch (err: any) {
         console.error('[SessionService] Supabase connection error (fail-closed):', err?.message);
@@ -238,6 +258,7 @@ export class SessionService {
           p_user_agent: userAgent || null,
         });
 
+        // 1. Jika ada error RPC / database
         if (error) {
           if (error.message.includes('SESSION_IDLE_TIMEOUT')) {
             return {
@@ -262,19 +283,48 @@ export class SessionService {
           };
         }
 
-        if (data) {
-          if (data.valid === false) {
-            return {
-              valid: false,
-              code: data.code || 'INVALID_TOKEN',
-              message: data.message || 'Pembaruan sesi keamanan gagal.',
-            };
-          }
+        // 2. Jika data null atau undefined -> tolak sesi (fail-closed)
+        if (!data) {
+          console.error('[SessionService] Supabase touch mengembalikan data null (fail-closed)');
+          return {
+            valid: false,
+            code: 'INVALID_TOKEN',
+            message: 'Respons sesi tidak valid dari server database.',
+          };
+        }
+
+        // 3. Jika data bukan object
+        if (typeof data !== 'object') {
+          console.error('[SessionService] Supabase touch mengembalikan respons malformed (fail-closed)');
+          return {
+            valid: false,
+            code: 'INVALID_TOKEN',
+            message: 'Struktur respons sesi tidak valid.',
+          };
+        }
+
+        // 4. Jika data.valid === false, gunakan code dan message dari database
+        if (data.valid === false) {
+          return {
+            valid: false,
+            code: data.code || 'INVALID_TOKEN',
+            message: data.message || 'Pembaruan sesi keamanan ditolak.',
+          };
+        }
+
+        // 5. HANYA menerima jika respons secara eksplisit menyatakan valid === true
+        if (data.valid === true) {
           const lastActivityAt = data.last_activity_at || new Date().toISOString();
           return { valid: true, lastActivityAt };
         }
 
-        return { valid: true, lastActivityAt: new Date().toISOString() };
+        // 6. Data malformed tanpa valid boolean eksplisit
+        console.error('[SessionService] Supabase touch mengembalikan respons tanpa status valid eksplisit (fail-closed)');
+        return {
+          valid: false,
+          code: 'INVALID_TOKEN',
+          message: 'Status validasi sesi tidak dapat dikonfirmasi.',
+        };
       } catch (err: any) {
         console.error('[SessionService] Supabase connection error (fail-closed):', err?.message);
         return {
@@ -471,6 +521,15 @@ export class SessionService {
    */
   getSessionCountForTest(): number {
     return this.memorySessions.size;
+  }
+
+  /**
+   * Untuk testing: Cek apakah sesi di memori berstatus revoked
+   */
+  isSessionRevokedForTest(token: string, adminId?: string, authUserId?: string): boolean {
+    const sessionKey = this.getSessionKey(token, adminId, authUserId);
+    const tokenHash = this.hashSessionKey(sessionKey);
+    return this.memorySessions.get(tokenHash)?.isRevoked ?? true;
   }
 }
 

@@ -37,7 +37,7 @@ export default function AuthCallback() {
           if (returnTo.startsWith('/admin')) {
             try {
               const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-              const verifyRes = await fetch(`${apiBase}/admin/auth/verify`, {
+              const verifyRes = await fetch(`${apiBase}/admin/auth/verify?init=true`, {
                 method: 'GET',
                 headers: {
                   Authorization: `Bearer ${data.session.access_token}`,

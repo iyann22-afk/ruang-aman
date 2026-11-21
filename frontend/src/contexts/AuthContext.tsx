@@ -18,6 +18,11 @@ interface UserProfile {
   avatar_url: string | null;
 }
 
+export interface SignOutResult {
+  serverRevoked: boolean;
+  error?: string;
+}
+
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
@@ -27,7 +32,7 @@ interface AuthContextValue {
   adminLoading: boolean;
   profile: UserProfile | null;
   signInWithGoogle: () => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: () => Promise<SignOutResult>;
   refreshAdmin: () => Promise<AdminProfile | null>;
 }
 
@@ -43,73 +48,78 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   // Cek apakah user adalah admin terdaftar & aktif
-  const checkAdminStatus = useCallback(async (accessToken?: string): Promise<AdminProfile | null> => {
-    setAdminLoading(true);
-    try {
-      // 1. Cek token Supabase jika ada
-      let token = accessToken;
-      if (!token) {
-        const { data } = await supabase.auth.getSession();
-        token = data.session?.access_token;
-      }
-
-      // 2. Jika tidak ada Supabase token, cek apakah ada token demo (development)
-      if (!token) {
-        const demoToken = localStorage.getItem('ruangaman_admin_token');
-        if (demoToken) {
-          try {
-            const profileData = await apiClient.getAdminProfile();
-            setAdmin(profileData);
-            setIsAdmin(true);
-            return profileData;
-          } catch {
-            localStorage.removeItem('ruangaman_admin_token');
-            setAdmin(null);
-            setIsAdmin(false);
-            return null;
-          }
+  const checkAdminStatus = useCallback(
+    async (accessToken?: string, options?: { initSession?: boolean }): Promise<AdminProfile | null> => {
+      setAdminLoading(true);
+      try {
+        // 1. Cek token Supabase jika ada
+        let token = accessToken;
+        if (!token) {
+          const { data } = await supabase.auth.getSession();
+          token = data.session?.access_token;
         }
-        setAdmin(null);
-        setIsAdmin(false);
-        return null;
-      }
 
-      // 3. Verifikasi token Supabase ke endpoint backend /admin/auth/verify
-      const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-      const res = await fetch(`${apiBase}/admin/auth/verify`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+        // 2. Jika tidak ada Supabase token, cek apakah ada token demo (development)
+        if (!token) {
+          const demoToken = localStorage.getItem('ruangaman_admin_token');
+          if (demoToken) {
+            try {
+              const profileData = await apiClient.getAdminProfile();
+              setAdmin(profileData);
+              setIsAdmin(true);
+              return profileData;
+            } catch {
+              localStorage.removeItem('ruangaman_admin_token');
+              setAdmin(null);
+              setIsAdmin(false);
+              return null;
+            }
+          }
+          setAdmin(null);
+          setIsAdmin(false);
+          return null;
+        }
 
-      if (res.ok) {
-        const json = await res.json();
-        const adminData: AdminProfile = {
-          id: json.admin.id,
-          full_name: json.admin.full_name,
-          email: json.admin.email,
-          role: json.admin.role,
-          is_active: json.admin.is_active,
-          permissions: json.admin.permissions || [],
-        };
-        setIsAdmin(true);
-        setAdmin(adminData);
-        return adminData;
-      } else {
+        // 3. Verifikasi token Supabase ke endpoint backend /admin/auth/verify
+        // Gunakan parameter ?init=true HANYA jika diminta (misal alur SIGNED_IN)
+        const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+        const initParam = options?.initSession ? '?init=true' : '';
+        const res = await fetch(`${apiBase}/admin/auth/verify${initParam}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          const adminData: AdminProfile = {
+            id: json.admin.id,
+            full_name: json.admin.full_name,
+            email: json.admin.email,
+            role: json.admin.role,
+            is_active: json.admin.is_active,
+            permissions: json.admin.permissions || [],
+          };
+          setIsAdmin(true);
+          setAdmin(adminData);
+          return adminData;
+        } else {
+          setIsAdmin(false);
+          setAdmin(null);
+          return null;
+        }
+      } catch (err) {
+        console.warn('[AuthContext] Gagal verifikasi status admin:', err);
         setIsAdmin(false);
         setAdmin(null);
         return null;
+      } finally {
+        setAdminLoading(false);
       }
-    } catch (err) {
-      console.warn('[AuthContext] Gagal verifikasi status admin:', err);
-      setIsAdmin(false);
-      setAdmin(null);
-      return null;
-    } finally {
-      setAdminLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   // Sinkronisasi profil pengguna ke backend setelah login Google berhasil.
   // Endpoint backend melakukan upsert tanpa mengganti UUID primary key.
@@ -152,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.access_token && session.user) {
-        checkAdminStatus(session.access_token);
+        checkAdminStatus(session.access_token, { initSession: false });
         syncUserProfile(session.access_token, session.user);
       } else {
         // Cek apakah ada demo token
@@ -161,24 +171,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    // Subscribe perubahan auth state
+    // Subscribe perubahan auth state dengan penanganan event terpisah
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.access_token && session.user) {
-          await checkAdminStatus(session.access_token);
-          await syncUserProfile(session.access_token, session.user);
-        } else {
-          // Bila session berakhir
-          const demoToken = localStorage.getItem('ruangaman_admin_token');
-          if (!demoToken) {
+      async (event, session) => {
+        switch (event) {
+          case 'TOKEN_REFRESHED': {
+            // PENTING: TOKEN_REFRESHED hanya memperbarui state session dan user.
+            // TIDAK boleh memanggil endpoint yang menjalankan touchSession().
+            // TIDAK boleh mereset waktu idle atau timestamp aktivitas.
+            setSession(session);
+            setUser(session?.user ?? null);
+            setLoading(false);
+            break;
+          }
+
+          case 'SIGNED_OUT': {
+            // SIGNED_OUT harus membersihkan seluruh state admin dan kredensial lokal
+            setSession(null);
+            setUser(null);
             setIsAdmin(false);
             setAdmin(null);
             setProfile(null);
+            localStorage.removeItem('ruangaman_admin_token');
+            localStorage.removeItem('ruangaman_admin_last_activity');
+            sessionStorage.removeItem('auth_return_to');
+            setLoading(false);
+            break;
+          }
+
+          case 'INITIAL_SESSION': {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session?.access_token && session.user) {
+              // Verifikasi read-only tanpa touchSession
+              await checkAdminStatus(session.access_token, { initSession: false });
+              await syncUserProfile(session.access_token, session.user);
+            } else {
+              await checkAdminStatus();
+            }
+            setLoading(false);
+            break;
+          }
+
+          case 'SIGNED_IN': {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session?.access_token && session.user) {
+              // Login awal: inisialisasi sesi admin & sinkronisasi profil
+              await checkAdminStatus(session.access_token, { initSession: true });
+              await syncUserProfile(session.access_token, session.user);
+            }
+            setLoading(false);
+            break;
+          }
+
+          case 'USER_UPDATED': {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session?.access_token && session.user) {
+              await syncUserProfile(session.access_token, session.user);
+            }
+            setLoading(false);
+            break;
+          }
+
+          default: {
+            setSession(session);
+            setUser(session?.user ?? null);
+            setLoading(false);
+            break;
           }
         }
-        setLoading(false);
       }
     );
 
@@ -205,31 +268,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (): Promise<SignOutResult> => {
+    let serverRevoked = true;
+    let serverError: string | undefined;
+
+    // 1. Panggil endpoint logout backend untuk mencabut sesi di database
     try {
-      await apiClient.logoutAdmin().catch(() => {});
-    } catch {
-      // Abaikan error saat memanggil backend logout
+      await apiClient.logoutAdmin();
+    } catch (err: any) {
+      serverRevoked = false;
+      serverError = err?.message || 'Gagal menghubungi server untuk mencabut sesi';
+      console.warn('[AuthContext] Pencabutan sesi di server gagal:', serverError);
     }
+
+    // 2. SELALU bersihkan kredensial lokal di browser
     localStorage.removeItem('ruangaman_admin_token');
     localStorage.removeItem('ruangaman_admin_last_activity');
     sessionStorage.removeItem('auth_return_to');
 
+    // 3. SELALU jalankan Supabase signOut untuk mengakhiri sesi browser
     try {
       await supabase.auth.signOut();
     } catch (err: any) {
-      console.error('[AuthContext] Sign-out error:', err.message);
+      console.error('[AuthContext] Supabase sign-out error:', err.message);
     }
 
+    // 4. Bersihkan seluruh state React
     setUser(null);
     setSession(null);
     setIsAdmin(false);
     setAdmin(null);
     setProfile(null);
+
+    return { serverRevoked, error: serverError };
   }, []);
 
   const refreshAdmin = useCallback(async () => {
-    return checkAdminStatus();
+    return checkAdminStatus(undefined, { initSession: false });
   }, [checkAdminStatus]);
 
   const value = useMemo(

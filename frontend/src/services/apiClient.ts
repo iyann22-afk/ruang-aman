@@ -290,12 +290,10 @@ class ApiClient {
     });
   }
 
-  async logoutAdmin(): Promise<void> {
-    try {
-      await this.request('/admin/auth/logout', { method: 'POST' });
-    } catch {
-      // abaikan error jika sesi sudah kadaluarsa
-    }
+  async logoutAdmin(): Promise<{ success: boolean; message?: string }> {
+    return this.request<{ success: boolean; message?: string }>('/admin/auth/logout', {
+      method: 'POST',
+    });
   }
 }
 
