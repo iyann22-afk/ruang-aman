@@ -171,6 +171,7 @@ describe('Hardening 2: Upload evidence gagal tidak membuat metadata palsu', () =
 
     // Fallback path palsu harus tidak ada lagi
     expect(serviceCode).not.toContain('report-evidence-private/fallback');
+    expect(serviceCode).not.toContain("'report-evidence-private'");
 
     // Upload harus dipanggil dan error-nya dibiarkan naik
     expect(serviceCode).toContain('uploadEvidenceToStorage(report.id, file)');
@@ -191,13 +192,39 @@ describe('Hardening 2: Upload evidence gagal tidak membuat metadata palsu', () =
     expect(middlewareCode).toContain('[DEV_SIMULATION]');
   });
 
-  it('kompensasi harus menghapus file storage jika metadata DB gagal disimpan', async () => {
+  it('kompensasi harus menghapus file storage menggunakan deleteEvidenceFromStorage', async () => {
     const serviceCode = readFileSync(join(srcDir, 'services/report.service.ts'), 'utf-8');
 
-    // Kompensasi: hapus file dari storage jika DB insert gagal
-    expect(serviceCode).toContain('.remove([storagePath])');
-    expect(serviceCode).toContain('report-evidence-private');
+    // Kompensasi menggunakan fungsi terpusat — bukan hardcoded bucket name
+    expect(serviceCode).toContain('deleteEvidenceFromStorage(storagePath)');
     expect(serviceCode).toContain('kompensasi');
+    // Tidak boleh ada hardcoded bucket name lama
+    expect(serviceCode).not.toContain("'report-evidence-private'");
+  });
+
+  it('bucket name harus didefinisikan dari satu konstanta konfigurasi', async () => {
+    const storageConfigCode = readFileSync(join(srcDir, 'config/storage.config.ts'), 'utf-8');
+    const middlewareCode = readFileSync(join(srcDir, 'middleware/upload.middleware.ts'), 'utf-8');
+
+    // storage.config.ts harus mendefinisikan EVIDENCE_BUCKET
+    expect(storageConfigCode).toContain("EVIDENCE_BUCKET = 'report-evidences'");
+
+    // upload.middleware.ts harus mengimpor dari storage.config
+    expect(middlewareCode).toContain("from '../config/storage.config.js'");
+    expect(middlewareCode).toContain('EVIDENCE_BUCKET');
+
+    // Tidak boleh ada string literal bucket lama
+    expect(middlewareCode).not.toContain("'report-evidence-private'");
+    expect(middlewareCode).not.toContain('"report-evidence-private"');
+  });
+
+  it('tidak boleh menggunakan getPublicUrl untuk file bukti', async () => {
+    const middlewareCode = readFileSync(join(srcDir, 'middleware/upload.middleware.ts'), 'utf-8');
+
+    // Pastikan tidak ada pemanggilan fungsi getPublicUrl (bukan sekadar sebutan di komentar)
+    // getPublicUrl sebagai function call: .getPublicUrl( atau getPublicUrl(
+    const hasPublicUrlCall = /\.getPublicUrl\s*\(/.test(middlewareCode);
+    expect(hasPublicUrlCall).toBe(false);
   });
 });
 
@@ -405,5 +432,126 @@ describe('Hardening 3: Slot booking menggunakan RPC atomik', () => {
 
     expect(migrationCode).toContain('CREATE OR REPLACE FUNCTION update_report_status_with_history');
     expect(migrationCode).toContain('report_status_histories');
+  });
+});
+
+// =====================================================================
+// STORAGE INTEGRATION TESTS
+// =====================================================================
+describe('Storage Integration: Konsistensi konfigurasi bucket', () => {
+  it('EVIDENCE_BUCKET harus bernilai report-evidences (bukan report-evidence-private)', () => {
+    const storageConfigCode = readFileSync(join(srcDir, 'config/storage.config.ts'), 'utf-8');
+    expect(storageConfigCode).toContain("EVIDENCE_BUCKET = 'report-evidences'");
+    expect(storageConfigCode).not.toContain('report-evidence-private');
+  });
+
+  it('upload.middleware.ts harus menggunakan EVIDENCE_BUCKET dari storage.config, bukan string literal', () => {
+    const middlewareCode = readFileSync(join(srcDir, 'middleware/upload.middleware.ts'), 'utf-8');
+
+    // Harus import dari storage.config
+    expect(middlewareCode).toContain("from '../config/storage.config.js'");
+    expect(middlewareCode).toContain('EVIDENCE_BUCKET');
+
+    // Tidak boleh ada string literal bucket lama atau baru secara hardcoded
+    expect(middlewareCode).not.toContain("'report-evidence-private'");
+    expect(middlewareCode).not.toContain("'report-evidences'"); // Harus dari konstanta
+  });
+
+  it('report.service.ts tidak boleh memiliki hardcoded bucket name', () => {
+    const serviceCode = readFileSync(join(srcDir, 'services/report.service.ts'), 'utf-8');
+
+    expect(serviceCode).not.toContain("'report-evidence-private'");
+    expect(serviceCode).not.toContain('"report-evidence-private"');
+    expect(serviceCode).not.toContain("'report-evidences'");
+    expect(serviceCode).not.toContain('"report-evidences"');
+  });
+
+  it('kompensasi di report.service.ts menggunakan deleteEvidenceFromStorage', () => {
+    const serviceCode = readFileSync(join(srcDir, 'services/report.service.ts'), 'utf-8');
+
+    // Fungsi terpusat — tidak import supabaseAdmin langsung untuk hapus file
+    expect(serviceCode).toContain('deleteEvidenceFromStorage(storagePath)');
+    expect(serviceCode).toContain('deleteEvidenceFromStorage');
+    expect(serviceCode).not.toContain(".from('report-evidence");
+  });
+
+  it('bucket harus tetap private — tidak ada getPublicUrl di middleware', () => {
+    const middlewareCode = readFileSync(join(srcDir, 'middleware/upload.middleware.ts'), 'utf-8');
+    // Tidak boleh ada pemanggilan fungsi getPublicUrl
+    const hasPublicUrlCall = /\.getPublicUrl\s*\(/.test(middlewareCode);
+    expect(hasPublicUrlCall).toBe(false);
+  });
+
+  it('signed URL hanya tersedia via fungsi getEvidenceSignedUrl (bukan public URL)', () => {
+    const middlewareCode = readFileSync(join(srcDir, 'middleware/upload.middleware.ts'), 'utf-8');
+
+    expect(middlewareCode).toContain('getEvidenceSignedUrl');
+    expect(middlewareCode).toContain('createSignedUrl');
+    expect(middlewareCode).toContain('SIGNED_URL_EXPIRY_SECONDS');
+  });
+
+  it('deleteEvidenceFromStorage harus tersedia di upload.middleware.ts', () => {
+    const middlewareCode = readFileSync(join(srcDir, 'middleware/upload.middleware.ts'), 'utf-8');
+    expect(middlewareCode).toContain('export async function deleteEvidenceFromStorage');
+    expect(middlewareCode).toContain('DEV_LOCAL_PATH_PREFIX');
+    expect(middlewareCode).toContain('.remove([storagePath])');
+  });
+
+  it('SUPABASE_SECRET_KEY tidak boleh ada di konfigurasi frontend', () => {
+    const frontendEnvExample = readFileSync(
+      join(__dirname, '../../frontend/.env.example'),
+      'utf-8'
+    );
+    expect(frontendEnvExample).not.toContain('SUPABASE_SECRET_KEY');
+    expect(frontendEnvExample).not.toContain('SERVICE_ROLE');
+  });
+
+  it('env.ts harus konsisten dengan .env.example (SUPABASE_PUBLISHABLE_KEY dan SUPABASE_SECRET_KEY)', () => {
+    const envConfig = readFileSync(join(srcDir, 'config/env.ts'), 'utf-8');
+    const envExample = readFileSync(join(__dirname, '../../backend/.env.example'), 'utf-8');
+
+    // env.ts harus membaca SUPABASE_PUBLISHABLE_KEY
+    expect(envConfig).toContain('SUPABASE_PUBLISHABLE_KEY');
+    // env.ts harus membaca SUPABASE_SECRET_KEY
+    expect(envConfig).toContain('SUPABASE_SECRET_KEY');
+
+    // .env.example harus mendefinisikan kedua key tersebut
+    expect(envExample).toContain('SUPABASE_PUBLISHABLE_KEY');
+    expect(envExample).toContain('SUPABASE_SECRET_KEY');
+
+    // Tidak boleh ada nama lama yang tidak konsisten
+    expect(envConfig).not.toContain('SUPABASE_ANON_KEY');
+    expect(envConfig).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+    expect(envExample).not.toContain('SUPABASE_ANON_KEY');
+    expect(envExample).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+  });
+
+  it('mock repository storage_path harus menggunakan prefix local/', () => {
+    const mockRepoCode = readFileSync(
+      join(srcDir, 'repositories/mock/report.repository.ts'),
+      'utf-8'
+    );
+    // Mock data harus pakai local/ prefix (bukan bucket name yang sudah deprecated)
+    expect(mockRepoCode).not.toContain('report-evidence-private/demo');
+    expect(mockRepoCode).toContain('local/');
+  });
+
+  it('endpoint signed URL admin harus terdaftar di router admin yang terproteksi', () => {
+    const adminRoutesCode = readFileSync(
+      join(srcDir, 'routes/v1/admin.routes.ts'),
+      'utf-8'
+    );
+    expect(adminRoutesCode).toContain('/reports/:id/evidences/:evidenceId/url');
+    // Pastikan berada setelah router.use(authenticateAdmin)
+    const authIndex = adminRoutesCode.indexOf('router.use(authenticateAdmin)');
+    const routeIndex = adminRoutesCode.indexOf('/reports/:id/evidences/:evidenceId/url');
+    expect(authIndex).toBeGreaterThan(0);
+    expect(routeIndex).toBeGreaterThan(authIndex);
+  });
+
+  it('getEvidenceSignedUrl memperkaya detail laporan admin dengan signed_url', () => {
+    const serviceCode = readFileSync(join(srcDir, 'services/report.service.ts'), 'utf-8');
+    expect(serviceCode).toContain('signed_url: signedUrl');
+    expect(serviceCode).toContain('getEvidenceSignedUrl(ev.storage_path)');
   });
 });

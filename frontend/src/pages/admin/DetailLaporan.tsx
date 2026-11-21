@@ -237,9 +237,21 @@ export const DetailLaporan: React.FC = () => {
                         {(ev.file_size_bytes / (1024 * 1024)).toFixed(2)} MB • {ev.mime_type}
                       </p>
                     </div>
-                    <span className="px-2.5 py-1 rounded bg-slate-200 font-semibold text-slate-700 text-[10px] shrink-0">
-                      Private Storage (Demo)
-                    </span>
+                    {ev.signed_url ? (
+                      <a
+                        href={ev.signed_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#0F9F91]/10 text-[#0F9F91] hover:bg-[#0F9F91]/20 font-semibold text-[10px] shrink-0 transition-colors"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>Unduh Bukti</span>
+                      </a>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded bg-slate-200 font-semibold text-slate-700 text-[10px] shrink-0">
+                        Private Storage (Demo)
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

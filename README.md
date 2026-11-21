@@ -177,4 +177,4 @@ Pada Minggu 3, aplikasi akan ditingkatkan dengan:
 2. Menjalankan `database/seed.sql`.
 3. Mengganti `MockReportRepository`, `MockCounselingRepository`, `MockEducationRepository`, dan `MockAdminRepository` dengan class implementasi Supabase Repository menggunakan `@supabase/supabase-js`.
 4. Mengaktifkan Supabase Auth dan Row Level Security (RLS) pada 9 tabel relasional.
-5. Mengintegrasikan Supabase Storage Private Bucket `report-evidence-private` dengan presigned URL berbatas waktu untuk file bukti laporan.
+5. Mengintegrasikan Supabase Storage Private Bucket `report-evidences` dengan presigned URL berbatas waktu untuk file bukti laporan.

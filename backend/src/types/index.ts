@@ -71,6 +71,7 @@ export interface ReportEvidence {
   mime_type: string;
   file_size_bytes: number;
   uploaded_at: string;
+  signed_url?: string | null;
 }
 
 export interface ReportStatusHistory {

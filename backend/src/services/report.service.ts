@@ -1,4 +1,8 @@
-import { uploadEvidenceToStorage } from '../middleware/upload.middleware.js';
+import {
+  deleteEvidenceFromStorage,
+  getEvidenceSignedUrl,
+  uploadEvidenceToStorage,
+} from '../middleware/upload.middleware.js';
 import {
   CreateReportDTO,
   IReportRepository,
@@ -66,20 +70,11 @@ export class ReportService {
         });
         hasEvidence = true;
       } catch (dbError) {
-        // Kompensasi: hapus file dari storage jika metadata DB gagal disimpan
-        // (hanya jika bukan dev fallback)
-        if (!storagePath.startsWith('local/')) {
-          try {
-            const { supabaseAdmin } = await import('../repositories/supabase/supabase.client.js');
-            if (supabaseAdmin) {
-              await supabaseAdmin.storage
-                .from('report-evidence-private')
-                .remove([storagePath]);
-            }
-          } catch {
-            // Log kompensasi gagal — tidak mempengaruhi respons error
-            console.error(`[kompensasi] Gagal menghapus file orphan: ${storagePath}`);
-          }
+        // Kompensasi: hapus file dari storage jika metadata DB gagal disimpan.
+        // deleteEvidenceFromStorage menangani bucket name dan dev fallback secara konsisten.
+        const deleted = await deleteEvidenceFromStorage(storagePath);
+        if (!deleted) {
+          console.error(`[kompensasi] Gagal menghapus file orphan dari storage: ${storagePath}`);
         }
         throw new Error(
           `Gagal menyimpan metadata bukti: ${dbError instanceof Error ? dbError.message : String(dbError)}`
@@ -118,12 +113,36 @@ export class ReportService {
     const evidences = await repo.getEvidencesByReportId(report.id);
     const histories = await repo.getHistoriesByReportId(report.id);
 
+    // Buat signed URL berbatas waktu untuk setiap bukti (hanya admin terautentikasi)
+    const enrichedEvidences = await Promise.all(
+      evidences.map(async (ev) => {
+        let signedUrl: string | null = null;
+        try {
+          signedUrl = await getEvidenceSignedUrl(ev.storage_path);
+        } catch {
+          signedUrl = null;
+        }
+        return {
+          ...ev,
+          signed_url: signedUrl,
+        };
+      })
+    );
+
     return {
       ...report,
       category_name: category ? category.name : 'Tidak Diketahui',
-      evidences,
+      evidences: enrichedEvidences,
       histories,
     };
+  }
+
+  async getEvidenceSignedUrl(reportId: string, evidenceId: string): Promise<string | null> {
+    const repo = this.getRepository();
+    const evidences = await repo.getEvidencesByReportId(reportId);
+    const evidence = evidences.find((e) => e.id === evidenceId);
+    if (!evidence) return null;
+    return getEvidenceSignedUrl(evidence.storage_path);
   }
 
   async updateReportStatus(

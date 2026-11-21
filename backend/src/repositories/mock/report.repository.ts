@@ -140,7 +140,7 @@ export class MockReportRepository implements IReportRepository {
     {
       id: 'ev000001-0000-0000-0000-000000000001',
       report_id: 'r0000001-0000-0000-0000-000000000002',
-      storage_path: 'report-evidence-private/demo/screenshot_wa.png',
+      storage_path: 'local/r0000001-0000-0000-0000-000000000002/screenshot_wa.png',
       original_filename: 'screenshot_wa.png',
       mime_type: 'image/png',
       file_size_bytes: 345120,

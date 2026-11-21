@@ -74,6 +74,29 @@ export class ReportController {
     }
   }
 
+  async getEvidenceSignedUrl(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const evidenceId = Array.isArray(req.params.evidenceId) ? req.params.evidenceId[0] : req.params.evidenceId;
+      const url = await reportService.getEvidenceSignedUrl(id, evidenceId);
+      if (!url) {
+        res.status(404).json({
+          success: false,
+          message: 'Bukti tidak ditemukan atau file tidak tersimpan di remote storage',
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Signed URL berhasil dibuat',
+        data: { signed_url: url },
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async updateReportStatus(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;

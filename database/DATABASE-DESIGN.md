@@ -44,8 +44,8 @@ CREATE POLICY "Admins have full access to reports" ON reports
 ```sql
 ALTER TABLE report_evidences ENABLE ROW LEVEL SECURITY;
 
--- Storage Bucket Private: 'report-evidence-private'
--- Tidak ada URL publik langsung. Hanya admin yang dapat men-generate signed URL sementara (TTL 15 menit).
+-- Storage Bucket Private: 'report-evidences'
+-- Tidak ada URL publik langsung. Hanya admin yang dapat men-generate signed URL sementara (TTL 60 menit).
 CREATE POLICY "Admins can view evidences" ON report_evidences
     FOR SELECT USING (
         EXISTS (

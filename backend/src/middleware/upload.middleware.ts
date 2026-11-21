@@ -2,6 +2,11 @@ import { NextFunction, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  DEV_LOCAL_PATH_PREFIX,
+  EVIDENCE_BUCKET,
+  SIGNED_URL_EXPIRY_SECONDS,
+} from '../config/storage.config.js';
 import { supabaseAdmin } from '../repositories/supabase/supabase.client.js';
 
 const allowedMimeTypes = [
@@ -18,14 +23,12 @@ const allowedExtensions: Record<string, string> = {
   'application/pdf': '.pdf',
 };
 
-const BUCKET_NAME = 'report-evidence-private';
-
-// Multer keeps file in memory buffer; we upload to Supabase Storage after validation
+// Multer menyimpan file di memory buffer; upload ke Supabase Storage setelah validasi
 const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  limits: { fileSize: 5 * 1024 * 1024 }, // Maks 5 MB
   fileFilter: (_req, file, cb) => {
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -69,9 +72,14 @@ export const uploadOptionalEvidence = (req: Request, res: Response, next: NextFu
  * Upload file bukti ke Supabase Storage (private bucket).
  * Dipanggil setelah uploadOptionalEvidence middleware.
  *
- * @param reportId - ID laporan (untuk path folder)
- * @param file - Multer file object dari req.file
+ * Bucket: EVIDENCE_BUCKET (didefinisikan di storage.config.ts)
+ * Bucket harus dikonfigurasi sebagai PRIVATE di Supabase Dashboard.
+ * Akses file menggunakan signed URL — JANGAN gunakan fungsi public URL.
+ *
+ * @param reportId - ID laporan (untuk path folder di dalam bucket)
+ * @param file     - Multer file object dari req.file
  * @returns storagePath string yang disimpan di DB
+ * @throws Error jika upload gagal di production atau Supabase tidak dikonfigurasi
  */
 export async function uploadEvidenceToStorage(
   reportId: string,
@@ -83,14 +91,14 @@ export async function uploadEvidenceToStorage(
 
   if (supabaseAdmin) {
     const { error } = await supabaseAdmin.storage
-      .from(BUCKET_NAME)
+      .from(EVIDENCE_BUCKET)
       .upload(storagePath, file.buffer, {
         contentType: file.mimetype,
         upsert: false,
       });
 
     if (error) {
-      throw new Error(`Gagal menyimpan file bukti: ${error.message}`);
+      throw new Error(`Gagal menyimpan file bukti ke storage: ${error.message}`);
     }
 
     return storagePath;
@@ -104,23 +112,67 @@ export async function uploadEvidenceToStorage(
   }
 
   // Development fallback: simulasikan path saja (tidak ada file fisik)
-  console.warn(`[DEV_SIMULATION] File bukti tidak diupload ke storage. Path simulasi: local/${storagePath}`);
-  return `local/${storagePath}`;
+  console.warn(
+    `[DEV_SIMULATION] File bukti tidak diupload ke storage. ` +
+    `Bucket: ${EVIDENCE_BUCKET}, Path simulasi: ${DEV_LOCAL_PATH_PREFIX}${storagePath}`
+  );
+  return `${DEV_LOCAL_PATH_PREFIX}${storagePath}`;
+}
+
+/**
+ * Hapus file bukti dari Supabase Storage.
+ * Dipanggil sebagai kompensasi jika metadata DB gagal disimpan.
+ *
+ * @param storagePath - Path file di dalam bucket (nilai dari DB)
+ * @returns true jika berhasil dihapus, false jika gagal atau path adalah dev local
+ */
+export async function deleteEvidenceFromStorage(storagePath: string): Promise<boolean> {
+  // Jangan coba hapus path simulasi development
+  if (storagePath.startsWith(DEV_LOCAL_PATH_PREFIX)) {
+    return false;
+  }
+
+  if (!supabaseAdmin) return false;
+
+  const { error } = await supabaseAdmin.storage
+    .from(EVIDENCE_BUCKET)
+    .remove([storagePath]);
+
+  if (error) {
+    console.error(`[storage] Gagal menghapus file orphan dari bucket "${EVIDENCE_BUCKET}": ${error.message}`, {
+      storagePath,
+    });
+    return false;
+  }
+
+  return true;
 }
 
 /**
  * Buat signed URL untuk mengakses file bukti (admin only).
- * URL berlaku 60 menit.
+ * URL berlaku sesuai SIGNED_URL_EXPIRY_SECONDS (default 1 jam).
+ *
+ * CATATAN KEAMANAN:
+ * - Fungsi ini HANYA dipanggil dari endpoint admin yang sudah terautentikasi.
+ * - Jangan gunakan fungsi public URL untuk file bukti — bucket harus tetap private.
+ * - Signed URL berisi token sementara yang kadaluarsa secara otomatis.
+ *
+ * @param storagePath - Path file di dalam bucket
+ * @returns Signed URL atau null jika gagal / path adalah dev local
  */
 export async function getEvidenceSignedUrl(storagePath: string): Promise<string | null> {
-  if (!supabaseAdmin || storagePath.startsWith('local/')) {
+  if (!supabaseAdmin || storagePath.startsWith(DEV_LOCAL_PATH_PREFIX)) {
     return null;
   }
 
   const { data, error } = await supabaseAdmin.storage
-    .from(BUCKET_NAME)
-    .createSignedUrl(storagePath, 60 * 60); // 1 jam
+    .from(EVIDENCE_BUCKET)
+    .createSignedUrl(storagePath, SIGNED_URL_EXPIRY_SECONDS);
 
-  if (error || !data) return null;
+  if (error || !data) {
+    console.error(`[storage] Gagal membuat signed URL dari bucket "${EVIDENCE_BUCKET}":`, error?.message);
+    return null;
+  }
+
   return data.signedUrl;
 }

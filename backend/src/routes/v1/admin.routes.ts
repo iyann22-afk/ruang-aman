@@ -75,6 +75,10 @@ router.get('/reports/:id', (req, res, next) => {
   reportController.getAdminReportDetail(req, res, next);
 });
 
+router.get('/reports/:id/evidences/:evidenceId/url', (req, res, next) => {
+  reportController.getEvidenceSignedUrl(req, res, next);
+});
+
 router.patch(
   '/reports/:id/status',
   validateBody(updateStatusSchema),
