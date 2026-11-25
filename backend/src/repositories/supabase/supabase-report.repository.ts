@@ -1,4 +1,3 @@
-import { randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import {
   Report,
@@ -7,27 +6,13 @@ import {
   ReportStatus,
   ReportStatusHistory,
 } from '../../types/index.js';
+import { generateTrackingCode } from '../../utils/entropy.js';
 import {
   CreateReportDTO,
   IReportRepository,
   ReportFilterOptions,
 } from '../interfaces/report.repository.interface.js';
 import { supabaseAdmin } from './supabase.client.js';
-
-/**
- * Generator tracking code kriptografis.
- * Menggunakan crypto.randomBytes agar tidak mudah ditebak.
- * Format: RA-XXXXXXXX (8 karakter dari alfabet RUANGAMAN)
- */
-function generateTrackingCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 karakter, ruang 32^8 = 1 triliun+
-  const bytes = randomBytes(8);
-  let code = 'RA-';
-  for (const byte of bytes) {
-    code += chars[byte % chars.length];
-  }
-  return code;
-}
 
 export class SupabaseReportRepository implements IReportRepository {
   async createReport(dto: CreateReportDTO): Promise<Report> {
@@ -167,6 +152,47 @@ export class SupabaseReportRepository implements IReportRepository {
         return null;
       }
       throw new Error(`Gagal memperbarui status laporan: ${error.message}`);
+    }
+
+    return (data as Report) ?? null;
+  }
+
+  async assignReport(
+    id: string,
+    assignedAdminId: string | null,
+    assignedByAdminId?: string | null,
+    notes?: string | null
+  ): Promise<Report | null> {
+    if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
+
+    const { data, error } = await supabaseAdmin
+      .from('reports')
+      .update({
+        assigned_admin_id: assignedAdminId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      if (error?.message?.includes('not found') || error?.code === 'PGRST116') {
+        return null;
+      }
+      throw new Error(`Gagal menugaskan laporan: ${error?.message}`);
+    }
+
+    // Catat histori penugasan untuk auditibilitas
+    try {
+      await supabaseAdmin.from('report_assignment_histories').insert({
+        id: uuidv4(),
+        report_id: id,
+        assigned_admin_id: assignedAdminId,
+        assigned_by_admin_id: assignedByAdminId ?? null,
+        notes: notes ?? null,
+      });
+    } catch {
+      // Graceful fallback jika tabel belum selesai dimigrasi di remote
     }
 
     return (data as Report) ?? null;

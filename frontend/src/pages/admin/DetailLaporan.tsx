@@ -16,6 +16,8 @@ import {
   Shield,
   ShieldAlert,
   User,
+  UserCheck,
+  UserPlus,
   UserX,
 } from 'lucide-react';
 import { apiClient } from '../../services/apiClient.js';
@@ -23,13 +25,21 @@ import { AdminReportDetail, ReportStatus } from '../../types/index.js';
 import { StatusBadge } from '../../components/common/StatusBadge.js';
 import { IdentityBadge } from '../../components/common/IdentityBadge.js';
 import { ToastAlert } from '../../components/feedback/ToastAlert.js';
+import { useAuth } from '../../contexts/AuthContext.js';
 
 export const DetailLaporan: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { admin } = useAuth();
+  const isManagerOrSuperAdmin = admin?.role === 'super_admin' || admin?.role === 'case_manager';
+
   const [report, setReport] = useState<AdminReportDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [counselors, setCounselors] = useState<Array<{ id: string; full_name: string }>>([]);
+  const [selectedCounselorId, setSelectedCounselorId] = useState<string>('');
+  const [assignmentNotes, setAssignmentNotes] = useState('');
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Status Change Form State
@@ -44,11 +54,49 @@ export const DetailLaporan: React.FC = () => {
       const data = await apiClient.getAdminReportDetail(id);
       setReport(data);
       setNewStatus(data.status);
+      setSelectedCounselorId(data.assigned_admin_id || '');
     } catch (err: any) {
       console.error('Failed to load report detail', err);
       setToast({ type: 'error', message: err.message || 'Laporan tidak ditemukan' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isManagerOrSuperAdmin) {
+      apiClient
+        .getCounselingCounselors()
+        .then((list) => setCounselors(list))
+        .catch((err) => console.error('Failed to load counselors', err));
+    }
+  }, [isManagerOrSuperAdmin]);
+
+  const handleAssignmentUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+
+    setAssigning(true);
+    setToast(null);
+
+    try {
+      await apiClient.assignReport(id, {
+        assigned_admin_id: selectedCounselorId ? selectedCounselorId : null,
+        notes: assignmentNotes.trim() || undefined,
+      });
+
+      setToast({
+        type: 'success',
+        message: selectedCounselorId
+          ? 'Laporan berhasil ditugaskan ke Guru BK terpilih.'
+          : 'Penugasan laporan berhasil dicabut.',
+      });
+      setAssignmentNotes('');
+      await fetchDetail();
+    } catch (err: any) {
+      setToast({ type: 'error', message: err.message || 'Gagal memperbarui penugasan.' });
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -268,6 +316,72 @@ export const DetailLaporan: React.FC = () => {
 
         {/* Right Col (5 cols): Status Change Action & Audit Timeline */}
         <div className="lg:col-span-5 space-y-6">
+          {/* Action Box: Assignment to Guru BK */}
+          <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-[#17324D] uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">
+              <UserCheck className="w-4 h-4 text-[#0F9F91]" />
+              <span>Penanggung Jawab Kasus (Guru BK)</span>
+            </h3>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <span className="text-slate-500 font-medium">Petugas Aktif:</span>
+                <span className="font-bold text-[#17324D]">
+                  {report.assigned_admin?.full_name || 'Belum Ditugaskan'}
+                </span>
+              </div>
+
+              {isManagerOrSuperAdmin ? (
+                <form onSubmit={handleAssignmentUpdate} className="space-y-3 pt-1">
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700 block">Tugaskan ke Guru BK</label>
+                    <select
+                      value={selectedCounselorId}
+                      onChange={(e) => setSelectedCounselorId(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white font-semibold text-[#17324D] focus:ring-2 focus:ring-[#0F9F91] outline-hidden text-xs"
+                    >
+                      <option value="">-- Belum Ditugaskan (Cabut Penugasan) --</option>
+                      {counselors.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-slate-700 block">Catatan Penugasan (Opsional)</label>
+                    <textarea
+                      rows={2}
+                      value={assignmentNotes}
+                      onChange={(e) => setAssignmentNotes(e.target.value)}
+                      placeholder="Catatan arahan awal bagi Guru BK penanggung jawab..."
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-hidden focus:ring-2 focus:ring-[#0F9F91] text-xs"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={assigning}
+                    className="w-full py-2.5 px-4 rounded-xl font-bold text-xs text-white bg-[#17324D] hover:bg-[#0F2236] transition-colors shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>{assigning ? 'Menyimpan...' : 'Perbarui Penanggung Jawab'}</span>
+                  </button>
+                </form>
+              ) : (
+                <div className="p-3 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 text-xs flex items-start gap-2">
+                  <UserCheck className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                  <span>
+                    {report.assigned_admin_id === admin?.id
+                      ? 'Kasus ini didelegasikan kepada Anda sebagai Guru BK untuk pendampingan konseling.'
+                      : 'Kasus ini ditangani oleh konselor lain.'}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Action Box: Update Status */}
           <div className="p-6 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-5">
             <h3 className="text-sm font-bold text-[#17324D] uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">

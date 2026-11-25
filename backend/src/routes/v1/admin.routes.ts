@@ -11,7 +11,7 @@ import {
   updateAdminStatusSchema,
 } from '../../validators/admin.validator.js';
 import { createCounselingSlotSchema } from '../../validators/counseling.validator.js';
-import { updateStatusSchema } from '../../validators/report.validator.js';
+import { assignReportSchema, updateStatusSchema } from '../../validators/report.validator.js';
 
 const router = Router();
 
@@ -61,6 +61,12 @@ router.get('/reports/:id/evidences/:evidenceId/url', (req, res, next) =>
 );
 router.patch('/reports/:id/status', validateBody(updateStatusSchema), (req, res, next) =>
   reportController.updateReportStatus(req, res, next)
+);
+router.patch(
+  '/reports/:id/assign',
+  requireRoles('super_admin', 'case_manager'),
+  validateBody(assignReportSchema),
+  (req, res, next) => reportController.assignReport(req, res, next)
 );
 
 router.get('/status-history', requireRoles('super_admin', 'case_manager'), (req, res, next) =>

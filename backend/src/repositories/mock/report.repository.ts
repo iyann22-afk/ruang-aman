@@ -191,6 +191,15 @@ export class MockReportRepository implements IReportRepository {
     },
   ];
 
+  private assignmentHistories: Array<{
+    id: string;
+    report_id: string;
+    assigned_admin_id: string | null;
+    assigned_by_admin_id: string | null;
+    notes: string | null;
+    created_at: string;
+  }> = [];
+
   async getCategories(): Promise<ReportCategory[]> {
     return this.categories.filter((c) => c.is_active).map((c) => ({ ...c }));
   }
@@ -303,10 +312,6 @@ export class MockReportRepository implements IReportRepository {
       report.resolved_at = new Date().toISOString();
     }
 
-    if (adminId) {
-      report.assigned_admin_id = adminId;
-    }
-
     await this.appendStatusHistory({
       report_id: report.id,
       changed_by_admin_id: adminId || null,
@@ -314,6 +319,30 @@ export class MockReportRepository implements IReportRepository {
       new_status: status,
       public_message: publicMessage || null,
       internal_note: internalNote || null,
+    });
+
+    return { ...report };
+  }
+
+  async assignReport(
+    id: string,
+    assignedAdminId: string | null,
+    assignedByAdminId?: string | null,
+    notes?: string | null
+  ): Promise<Report | null> {
+    const report = this.reports.find((r) => r.id === id);
+    if (!report) return null;
+
+    report.assigned_admin_id = assignedAdminId;
+    report.updated_at = new Date().toISOString();
+
+    this.assignmentHistories.unshift({
+      id: uuidv4(),
+      report_id: id,
+      assigned_admin_id: assignedAdminId,
+      assigned_by_admin_id: assignedByAdminId ?? null,
+      notes: notes ?? null,
+      created_at: new Date().toISOString(),
     });
 
     return { ...report };

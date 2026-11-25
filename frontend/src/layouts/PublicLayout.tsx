@@ -21,7 +21,9 @@ import { useAuth } from '../contexts/AuthContext.js';
 export const PublicLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, loading, adminLoading, isAdmin, admin, signInWithGoogle, signOut } = useAuth();
+  const isOfficer = !adminLoading && isAdmin && Boolean(admin?.is_active);
+  const portalPath = isOfficer ? '/admin/dashboard' : '/admin/login';
 
   const navLinks = [
     { name: 'Beranda', to: '/', icon: Home },
@@ -63,11 +65,11 @@ export const PublicLayout: React.FC = () => {
             </a>
             <span className="text-slate-400">|</span>
             <Link
-              to="/admin/login"
+              to={portalPath}
               className="inline-flex items-center gap-1 text-slate-300 hover:text-white transition-colors"
             >
               <Lock className="w-3 h-3" />
-              <span>Portal Petugas</span>
+              <span>{isOfficer ? 'Dashboard Petugas' : 'Portal Petugas'}</span>
             </Link>
           </div>
         </div>
@@ -215,12 +217,12 @@ export const PublicLayout: React.FC = () => {
               })}
               <div className="pt-3 border-t border-slate-200/60 mt-3">
                 <Link
-                  to="/admin/login"
+                  to={portalPath}
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-white/60"
                 >
                   <Lock className="w-4 h-4 text-slate-400" />
-                  <span>Masuk Portal Petugas Satgas</span>
+                  <span>{isOfficer ? 'Dashboard Petugas' : 'Masuk Portal Petugas Satgas'}</span>
                 </Link>
               </div>
             </div>
@@ -315,7 +317,9 @@ export const PublicLayout: React.FC = () => {
             <div className="flex gap-6">
               <Link to="/tentang" className="hover:text-[#0F9F91]">Kebijakan Privasi</Link>
               <Link to="/tentang" className="hover:text-[#0F9F91]">Ketentuan Layanan</Link>
-              <Link to="/admin/login" className="hover:text-[#0F9F91]">Portal Admin</Link>
+              <Link to={portalPath} className="hover:text-[#0F9F91]">
+                {isOfficer ? 'Dashboard Petugas' : 'Portal Admin'}
+              </Link>
             </div>
           </div>
         </div>

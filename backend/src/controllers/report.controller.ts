@@ -137,6 +137,34 @@ export class ReportController {
     }
   }
 
+  async assignReport(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const { assigned_admin_id, notes } = req.body;
+
+      const updated = await reportService.assignReport(
+        id,
+        assigned_admin_id ?? null,
+        req.admin,
+        notes
+      );
+
+      res.status(200).json({
+        success: true,
+        message: assigned_admin_id
+          ? 'Laporan berhasil ditugaskan ke Guru BK terpilih'
+          : 'Penugasan laporan berhasil dicabut',
+        data: updated,
+      });
+    } catch (err: any) {
+      const statusCode = err.statusCode || 500;
+      res.status(statusCode).json({
+        success: false,
+        message: err.message || 'Gagal menugaskan laporan',
+      });
+    }
+  }
+
   async getAuditTrail(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;

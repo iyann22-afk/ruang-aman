@@ -21,7 +21,9 @@ export class SupabaseEducationRepository implements IEducationRepository {
     }
 
     const { data, error } = await query.order('created_at', { ascending: false });
-    if (error) return [];
+    if (error) {
+      throw new Error(`Gagal memuat materi edukasi dari database: ${error.message}`);
+    }
     return (data as EducationMaterial[]) ?? [];
   }
 
@@ -54,8 +56,10 @@ export class SupabaseEducationRepository implements IEducationRepository {
       .from('education_materials')
       .select('category')
       .eq('is_published', true);
-    if (error || !data) return [];
-    const unique = [...new Set((data as { category: string }[]).map((d) => d.category))];
+    if (error) {
+      throw new Error(`Gagal memuat kategori edukasi: ${error.message}`);
+    }
+    const unique = [...new Set(((data as { category: string }[]) || []).map((d) => d.category))];
     return unique.filter(Boolean);
   }
 }

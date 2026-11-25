@@ -263,6 +263,20 @@ class ApiClient {
     });
   }
 
+  async assignReport(
+    id: string,
+    payload: {
+      assigned_admin_id: string | null;
+      notes?: string;
+    }
+  ): Promise<any> {
+    return this.request(`/admin/reports/${id}/assign`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  }
+
   async getStatusHistory(): Promise<ReportStatusHistory[]> {
     return this.request<ReportStatusHistory[]>('/admin/status-history');
   }

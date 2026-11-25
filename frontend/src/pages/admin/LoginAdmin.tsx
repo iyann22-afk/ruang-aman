@@ -22,7 +22,7 @@ const isDemoEnabled =
 export const LoginAdmin: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { signInWithGoogle, isAdmin } = useAuth();
+  const { signInWithGoogle, isAdmin, admin, adminLoading } = useAuth();
   const [email, setEmail] = useState(isDemoEnabled ? 'admin@ruangaman.id' : '');
   const [password, setPassword] = useState(isDemoEnabled ? 'PasswordDemo123!' : '');
   const [loading, setLoading] = useState(false);
@@ -86,6 +86,18 @@ export const LoginAdmin: React.FC = () => {
       });
     }
   }, [searchParams]);
+
+  // Auto-redirect jika pengguna sudah login dan merupakan petugas aktif (tanpa parameter peringatan/logout)
+  useEffect(() => {
+    const errParam = searchParams.get('error');
+    const warningParam = searchParams.get('warning');
+    const noticeParam = searchParams.get('notice');
+    const hasAuthAlert = Boolean(errParam || warningParam || noticeParam);
+
+    if (!hasAuthAlert && !adminLoading && isAdmin && Boolean(admin?.is_active)) {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [isAdmin, admin, adminLoading, searchParams, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

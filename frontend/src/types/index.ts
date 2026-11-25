@@ -88,6 +88,8 @@ export interface AdminReportListItem {
   incident_location: string;
   identity_mode: IdentityMode;
   status: ReportStatus;
+  assigned_admin_id?: string | null;
+  assigned_admin_name?: string | null;
   created_at: string;
 }
 

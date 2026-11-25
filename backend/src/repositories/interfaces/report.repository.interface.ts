@@ -39,6 +39,12 @@ export interface IReportRepository {
     publicMessage?: string,
     internalNote?: string
   ): Promise<Report | null>;
+  assignReport(
+    id: string,
+    assignedAdminId: string | null,
+    assignedByAdminId?: string | null,
+    notes?: string | null
+  ): Promise<Report | null>;
   appendStatusHistory(
     history: Omit<ReportStatusHistory, 'id' | 'created_at'>
   ): Promise<ReportStatusHistory>;

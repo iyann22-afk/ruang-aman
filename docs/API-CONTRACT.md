@@ -436,7 +436,39 @@ Memperbarui status penanganan laporan beserta audit trail catatan.
 
 ---
 
-### 4.6. `GET /api/v1/admin/status-history`
+### 4.6. `PATCH /api/v1/admin/reports/:id/assign`
+Menugaskan laporan kepada Guru BK / Konselor yang bertugas.
+- **Otorisasi:** `super_admin` dan `case_manager`.
+- **Aturan Bisnis:**
+  - `counselor` ditolak (403).
+  - Target petugas harus aktif dan memiliki peran `counselor` (400 jika tidak aktif atau bukan konselor).
+  - Melewatkan `assigned_admin_id: null` mencabut penugasan.
+  - Setiap perubahan dicatat ke dalam tabel audit `report_assignment_histories`.
+
+**Request Body:**
+```json
+{
+  "assigned_admin_id": "a0000001-0000-0000-0000-000000000002",
+  "notes": "Dampingi korban pada mediasi tertutup."
+}
+```
+
+**Respons Sukses (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Laporan berhasil ditugaskan ke Guru BK terpilih",
+  "data": {
+    "id": "r0000001-0000-0000-0000-000000000001",
+    "assigned_admin_id": "a0000001-0000-0000-0000-000000000002",
+    "updated_at": "2026-11-25T15:00:00.000Z"
+  }
+}
+```
+
+---
+
+### 4.7. `GET /api/v1/admin/status-history`
 Audit trail lengkap perubahan status penanganan laporan.
 
 **Respons Sukses (200 OK):**

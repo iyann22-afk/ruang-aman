@@ -189,6 +189,7 @@ export const DaftarLaporan: React.FC = () => {
                   <th className="py-3 px-4">Tanggal Kejadian</th>
                   <th className="py-3 px-4">Lokasi</th>
                   <th className="py-3 px-4">Identitas</th>
+                  <th className="py-3 px-4">Guru BK</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4 text-right">Aksi</th>
                 </tr>
@@ -206,6 +207,16 @@ export const DaftarLaporan: React.FC = () => {
                     <td className="py-3.5 px-4 truncate max-w-[180px]">{report.incident_location}</td>
                     <td className="py-3.5 px-4">
                       <IdentityBadge mode={report.identity_mode} />
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {report.assigned_admin_name ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] bg-purple-50 text-purple-700 border border-purple-200">
+                          <UserCheck className="w-3 h-3 text-purple-600 shrink-0" />
+                          <span className="truncate max-w-[120px]">{report.assigned_admin_name}</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px]">Belum ditugaskan</span>
+                      )}
                     </td>
                     <td className="py-3.5 px-4">
                       <StatusBadge status={report.status} size="sm" />

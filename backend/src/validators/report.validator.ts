@@ -37,3 +37,8 @@ export const updateStatusSchema = z.object({
   public_message: z.string().max(1000).optional().nullable(),
   internal_note: z.string().max(2000).optional().nullable(),
 });
+
+export const assignReportSchema = z.object({
+  assigned_admin_id: z.string().uuid('ID Guru BK tidak valid').nullable().optional(),
+  notes: z.string().max(500, 'Catatan penugasan maksimal 500 karakter').optional().nullable(),
+});

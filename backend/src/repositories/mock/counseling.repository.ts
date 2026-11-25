@@ -182,6 +182,8 @@ export class MockCounselingRepository implements ICounselingRepository {
       throw new Error('Slot konseling tidak ditemukan');
     }
 
+    slot.status = 'booked';
+
     const bookingCode = generateBookingCode();
     const newBooking: CounselingBooking = {
       id: uuidv4(),

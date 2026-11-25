@@ -9,6 +9,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { join, dirname } from 'path';
+import { generateTrackingCode } from '../src/utils/entropy.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const srcDir = join(__dirname, '../src');
@@ -232,47 +233,39 @@ describe('Hardening 2: Upload evidence gagal tidak membuat metadata palsu', () =
 // SKENARIO 3: Tracking code menggunakan crypto.randomBytes
 // =====================================================================
 describe('Hardening 5: Tracking code menggunakan generator kriptografis', () => {
-  it('tracking code harus dimulai dengan RA- dan memiliki 11 karakter total', () => {
-    // Simulasi generator yang sama dengan implementasi
-    const { randomBytes } = require('crypto');
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const bytes = randomBytes(8);
-    let code = 'RA-';
-    for (const byte of bytes) {
-      code += chars[byte % chars.length];
-    }
+  it('tracking code harus dimulai dengan RA-YYYY- dan memiliki 14 karakter total', () => {
+    const code = generateTrackingCode();
+    const currentYear = new Date().getFullYear();
 
-    expect(code).toMatch(/^RA-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);
-    expect(code).toHaveLength(11);
+    expect(code).toMatch(new RegExp(`^RA-${currentYear}-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$`));
+    expect(code).toHaveLength(14);
   });
 
   it('100 kode yang dihasilkan seharusnya tidak ada duplikat', () => {
-    const { randomBytes } = require('crypto');
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
     const codes = new Set<string>();
     for (let i = 0; i < 100; i++) {
-      const bytes = randomBytes(8);
-      let code = 'RA-';
-      for (const byte of bytes) {
-        code += chars[byte % chars.length];
-      }
-      codes.add(code);
+      codes.add(generateTrackingCode());
     }
 
-    // Semua 100 kode harus unik (probabilitas duplikat = 100/32^8 ≈ nol)
+    // Semua 100 kode harus unik
     expect(codes.size).toBe(100);
   });
 
-  it('source code harus menggunakan crypto.randomBytes, bukan Math.random', () => {
+  it('source code generator harus menggunakan crypto.randomBytes, bukan Math.random', () => {
     const sourceCode = readFileSync(
-      join(srcDir, 'repositories/supabase/supabase-report.repository.ts'),
+      join(srcDir, 'utils/entropy.ts'),
       'utf-8'
     );
     expect(sourceCode).toContain("from 'crypto'");
     expect(sourceCode).toContain('randomBytes');
-    // Pastikan Math.random sudah dihapus dari generator
     expect(sourceCode).not.toContain('Math.random');
+
+    const repoSource = readFileSync(
+      join(srcDir, 'repositories/supabase/supabase-report.repository.ts'),
+      'utf-8'
+    );
+    expect(repoSource).toContain('generateTrackingCode');
+    expect(repoSource).not.toContain('Math.random');
   });
 });
 

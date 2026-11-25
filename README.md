@@ -3,7 +3,7 @@
 [![Full-Stack](https://img.shields.io/badge/Platform-Full--Stack%20Web-0F9F91.svg)](#)
 [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite%20%2B%20Tailwind%204-sky.svg)](frontend/)
 [![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express%20%2B%20TypeScript-blue.svg)](backend/)
-[![Tests](https://img.shields.io/badge/Tests-18%20Passed-emerald.svg)](backend/tests/)
+[![Tests](https://img.shields.io/badge/Tests-150%20Passed-emerald.svg)](backend/tests/)
 [![License](https://img.shields.io/badge/License-MIT-slate.svg)](#)
 
 > **RUANGAMAN** adalah platform pelaporan dan pendampingan terpadu untuk menangani kasus perundungan (*bullying*) dan kekerasan di lingkungan pendidikan (sekolah dan madrasah) berbasis web. Didesain secara empatik, aman, dan mematuhi Permendikbudristek No. 46 Tahun 2023.
@@ -126,7 +126,7 @@ Aplikasi akan aktif secara bersamaan:
 ```bash
 npm test
 ```
-*Menjalankan 18 automated integration tests Vitest + Supertest pada backend.*
+*Menjalankan 150 automated security and integration tests Vitest + Supertest pada backend (100% lulus).*
 
 ### 5. Membangun Bundle Produksi (Build)
 ```bash
@@ -136,17 +136,20 @@ npm run build
 
 ---
 
-## 🔑 KREDENSIAL DEMO ADMIN (MINGGU 2)
+## 🔑 MANAJEMEN PETUGAS & AUTENTIKASI (MINGGU 3)
 
-Gunakan kredensial berikut untuk masuk ke Portal Petugas di `/admin/login`:
+RUANGAMAN mengadopsi mekanisme autentikasi terpadu berbasis Google OAuth dan Supabase Auth dengan penegakan peran berbasis RBAC:
 
-| Email Akun | Password Demo | Role Wewenang |
-|---|---|---|
-| `admin@ruangaman.id` | `PasswordDemo123!` | `super_admin` |
-| `casemanager@ruangaman.id` | `PasswordDemo123!` | `case_manager` |
-| `counselor@ruangaman.id` | `PasswordDemo123!` | `counselor` (Guru BK) |
-
-*Tersedia tombol pintas (autofill) akun demo langsung pada halaman login admin.*
+- **Pendaftaran Petugas:** Hanya `super_admin` yang berwenang mendaftarkan akun petugas melalui panel Manajemen Petugas (`/admin/petugas`).
+- **Google OAuth Login:** Petugas masuk menggunakan akun Google yang emailnya telah terdaftar resmi oleh Super Admin.
+- **Role & Wewenang:**
+  - `super_admin`: Pengelola utama sistem, manajemen petugas, dashboard ringkasan, audit trail, penugasan kasus, dan konseling.
+  - `case_manager`: Pengelolaan penanganan laporan, penugasan kasus ke Guru BK, pemantauan status kasus, dan jadwal konseling.
+  - `counselor` (Guru BK): Akses khusus untuk kasus yang ditugaskan ke dirinya, perbaruan status penanganan konseling, dan pengelolaan jadwal konseling mandiri.
+- **Keamanan Sesi:**
+  - Idle timeout 15 menit dengan dialog peringatan aktivitas.
+  - Touch session atomik via RPC PostgreSQL.
+  - Single active session per device dengan session revocation atomik.
 
 ---
 
@@ -155,26 +158,17 @@ Gunakan kredensial berikut untuk masuk ke Portal Petugas di `/admin/login`:
 ### Pengguna Umum
 - `/` — Beranda (Hero Banner Lottie, 4 Kartu VanillaTilt, Cara Kerja, Panduan Privasi)
 - `/tentang` — Profil RUANGAMAN, Latar Belakang Permendikbud, Visi Misi, Layanan
-- `/lapor` — Wizard Pelaporan Bertahap, Mode Anonim/Identitas, Preview Bukti, Kode Lacak
-- `/lacak` — Pelacakan Progres Laporan dengan Kode Unik, Timeline Kasus Publik
-- `/edukasi` — Mini LMS Edukasi Bullying, Pencarian & Filter Kategori, Reader Modal
-- `/pendampingan` — Reservasi Konseling Guru BK (Data Simulasi), Direktori Hotline Krisis
+- `/lapor` — Wizard Pelaporan Bertahap, Mode Anonim/Identitas, Upload Bukti Private Storage, Kode Lacak Kriptografis
+- `/lacak` — Pelacakan Kasus Real-Time via Kode Unik (`RA-YYYY-XXXXXX`), Timeline Status Publik
+- `/edukasi` — Mini LMS Edukasi Bullying, Pencarian & Filter Kategori, Reader Modal Artikel
+- `/pendampingan` — Reservasi Sesi Konseling Guru BK, Direktori Kontak Krisis 24 Jam (SAPA 129 & TEPSA 1500771)
 
 ### Panel Petugas Admin
-- `/admin/login` — Autentikasi Demo Petugas Satgas & BK
-- `/admin/dashboard` — Agregasi Metrik, Distribusi Kategori, Tabel Kasus Terbaru
-- `/admin/laporan` — Manajemen Tabel Laporan, Pencarian, Filter Status & Identitas
-- `/admin/laporan/:id` — Detail Lengkap Kasus, Kronologi, Bukti, Form Perubahan Status
+- `/admin/login` — Autentikasi Google OAuth Petugas Satgas & Guru BK
+- `/admin/dashboard` — Agregasi Metrik, Distribusi Kategori, Tabel Kasus Terkait
+- `/admin/laporan` — Manajemen Laporan, Penugasan Guru BK, Pencarian, Filter Status & Identitas
+- `/admin/laporan/:id` — Detail Lengkap Kasus, Penugasan Guru BK, Bukti Signed URL, Form Perubahan Status
+- `/admin/jadwal-konseling` — Manajemen Slot Waktu Konseling Daring/Luring
 - `/admin/riwayat-status` — Audit Trail Log Mutasi Status Kasus
-- `/admin/profil` — Profil Admin, Hak Akses Wewenang, Status Akun
-
----
-
-## 🗺️ ROADMAP MINGGU 3 (INTEGRASI SUPABASE)
-
-Pada Minggu 3, aplikasi akan ditingkatkan dengan:
-1. Menghubungkan project Supabase PostgreSQL dan menjalankan `database/migrations/0001_initial_schema.sql`.
-2. Menjalankan `database/seed.sql`.
-3. Mengganti `MockReportRepository`, `MockCounselingRepository`, `MockEducationRepository`, dan `MockAdminRepository` dengan class implementasi Supabase Repository menggunakan `@supabase/supabase-js`.
-4. Mengaktifkan Supabase Auth dan Row Level Security (RLS) pada 9 tabel relasional.
-5. Mengintegrasikan Supabase Storage Private Bucket `report-evidences` dengan presigned URL berbatas waktu untuk file bukti laporan.
+- `/admin/petugas` — Manajemen Akun Petugas Satgas & Guru BK (Super Admin Only)
+- `/admin/profil` — Profil Petugas, Hak Akses Wewenang, Status Akun

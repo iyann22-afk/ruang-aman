@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
+  AlertCircle,
   ArrowRight,
   BookOpen,
   Clock,
   Filter,
+  RefreshCw,
   Search,
   Share2,
   Sparkles,
@@ -26,6 +28,7 @@ const getEducationCategoryLabel = (category: string): string =>
 export const Edukasi: React.FC = () => {
   const [materials, setMaterials] = useState<EducationMaterial[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [educationCategories, setEducationCategories] = useState<string[]>([]);
@@ -48,19 +51,26 @@ export const Edukasi: React.FC = () => {
       });
   }, []);
 
-  useEffect(() => {
+  const fetchMaterials = () => {
     setLoading(true);
+    setError(null);
     apiClient
       .getEducationMaterials(search, selectedCategory)
       .then((data) => {
         setMaterials(data);
+        setError(null);
       })
       .catch((err) => {
         console.error('Failed to load education materials', err);
+        setError(err.message || 'Gagal memuat materi edukasi. Periksa koneksi internet Anda.');
       })
       .finally(() => {
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchMaterials();
   }, [search, selectedCategory]);
 
   return (
@@ -121,11 +131,27 @@ export const Edukasi: React.FC = () => {
             <div key={i} className="h-64 rounded-2xl bg-white/60 animate-pulse border border-slate-200"></div>
           ))}
         </div>
+      ) : error ? (
+        <div className="text-center py-16 px-6 rounded-3xl glass-panel border border-rose-200/60 bg-rose-50/40 space-y-4">
+          <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-[#17324D]">Gagal Memuat Materi Edukasi</h3>
+            <p className="text-xs text-rose-700 max-w-md mx-auto">{error}</p>
+          </div>
+          <button
+            type="button"
+            onClick={fetchMaterials}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-[#0F9F91] hover:bg-[#0B7A6F] shadow-sm transition-all cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Coba Lagi</span>
+          </button>
+        </div>
       ) : materials.length === 0 ? (
         <div className="text-center py-16 rounded-3xl glass-panel border border-white/60">
           <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-[#17324D]">Tidak Ada Materi yang Cocok</h3>
-          <p className="text-xs text-slate-500 mt-1">Coba gunakan kata kunci pencarian yang lain.</p>
+          <p className="text-xs text-slate-500 mt-1">Coba gunakan kata kunci pencarian yang lain atau pilih kategori Semua.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -3,6 +3,7 @@ import {
   getEvidenceSignedUrl,
   uploadEvidenceToStorage,
 } from '../middleware/upload.middleware.js';
+import { IAdminRepository } from '../repositories/interfaces/admin.repository.interface.js';
 import {
   CreateReportDTO,
   IReportRepository,
@@ -12,11 +13,19 @@ import { getRepositoriesSync } from '../repositories/repository.factory.js';
 import { Admin, Report, ReportCategory, ReportStatus } from '../types/index.js';
 
 export class ReportService {
-  constructor(private repo?: IReportRepository) {}
+  constructor(
+    private repo?: IReportRepository,
+    private adminRepo?: IAdminRepository
+  ) {}
 
   private getRepository(): IReportRepository {
     if (this.repo) return this.repo;
     return getRepositoriesSync().reportRepository;
+  }
+
+  private getAdminRepository(): IAdminRepository {
+    if (this.adminRepo) return this.adminRepo;
+    return getRepositoriesSync().adminRepository;
   }
 
   async getCategories(): Promise<ReportCategory[]> {
@@ -102,10 +111,14 @@ export class ReportService {
     const { items, total } = await repo.listReports(finalFilters);
     const categories = await repo.getCategories();
     const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
+    const adminRepo = this.getAdminRepository();
+    const admins = await adminRepo.listAdmins();
+    const adminMap = new Map(admins.map((a) => [a.id, a.full_name]));
 
     const enrichedItems = items.map((r) => ({
       ...r,
       category_name: categoryMap.get(r.category_id) || 'Tidak Diketahui',
+      assigned_admin_name: r.assigned_admin_id ? (adminMap.get(r.assigned_admin_id) || 'Guru BK') : null,
     }));
 
     return { items: enrichedItems, total };
@@ -127,6 +140,15 @@ export class ReportService {
     const evidences = await repo.getEvidencesByReportId(report.id);
     const histories = await repo.getHistoriesByReportId(report.id);
 
+    let assignedAdmin: { id: string; full_name: string } | null = null;
+    if (report.assigned_admin_id) {
+      const adminRepo = this.getAdminRepository();
+      const adminUser = await adminRepo.findById(report.assigned_admin_id);
+      if (adminUser) {
+        assignedAdmin = { id: adminUser.id, full_name: adminUser.full_name };
+      }
+    }
+
     // Buat signed URL berbatas waktu untuk setiap bukti (hanya admin terautentikasi)
     const enrichedEvidences = await Promise.all(
       evidences.map(async (ev) => {
@@ -146,6 +168,8 @@ export class ReportService {
     return {
       ...report,
       category_name: category ? category.name : 'Tidak Diketahui',
+      assigned_admin: assignedAdmin,
+      assigned_admin_name: assignedAdmin?.full_name ?? null,
       evidences: enrichedEvidences,
       histories,
     };
@@ -196,6 +220,55 @@ export class ReportService {
       adminId,
       publicMessage,
       internalNote
+    );
+    return updated;
+  }
+
+  async assignReport(
+    id: string,
+    assignedAdminId: string | null,
+    requestingAdmin?: Admin,
+    notes?: string
+  ) {
+    if (!requestingAdmin || (requestingAdmin.role !== 'super_admin' && requestingAdmin.role !== 'case_manager')) {
+      const err = new Error('Akses ditolak: Hanya Super Admin dan Case Manager yang berwenang menugaskan laporan.');
+      (err as any).statusCode = 403;
+      throw err;
+    }
+
+    const repo = this.getRepository();
+    const report = await repo.findById(id);
+    if (!report) {
+      const err = new Error('Laporan tidak ditemukan');
+      (err as any).statusCode = 404;
+      throw err;
+    }
+
+    if (assignedAdminId) {
+      const adminRepo = this.getAdminRepository();
+      const targetAdmin = await adminRepo.findById(assignedAdminId);
+      if (!targetAdmin) {
+        const err = new Error('Petugas yang dituju tidak ditemukan.');
+        (err as any).statusCode = 404;
+        throw err;
+      }
+      if (!targetAdmin.is_active) {
+        const err = new Error('Petugas yang dipilih sedang tidak aktif.');
+        (err as any).statusCode = 400;
+        throw err;
+      }
+      if (targetAdmin.role !== 'counselor') {
+        const err = new Error('Laporan hanya dapat ditugaskan kepada petugas dengan peran Guru BK / Konselor.');
+        (err as any).statusCode = 400;
+        throw err;
+      }
+    }
+
+    const updated = await repo.assignReport(
+      id,
+      assignedAdminId,
+      requestingAdmin.id,
+      notes
     );
     return updated;
   }
