@@ -170,7 +170,7 @@ Platform RUANGAMAN dibuat untuk memberikan rasa aman penuh bagi siswa yang ragu 
     const normalizedCategory = category?.trim();
     if (normalizedCategory && !['semua', 'all'].includes(normalizedCategory.toLowerCase())) {
       result = result.filter(
-        (m) => m.category.toLowerCase() === category.toLowerCase()
+        (m) => m.category.toLowerCase() === normalizedCategory.toLowerCase()
       );
     }
 
