@@ -5,6 +5,7 @@ import {
   CreateBookingDTO,
   ICounselingRepository,
 } from '../interfaces/counseling.repository.interface.js';
+import { isUpcomingCounselingSlot } from '../../utils/counseling-slot.js';
 import { supabaseAdmin } from './supabase.client.js';
 
 function generateBookingCode(): string {
@@ -21,15 +22,19 @@ function generateBookingCode(): string {
 export class SupabaseCounselingRepository implements ICounselingRepository {
   async listSlots(): Promise<CounselingSlot[]> {
     if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
-    // Kolom aktual: start_at (bukan slot_date / slot_time)
+    // Filter di database dan validasi ulang setelah respons untuk mencegah slot kedaluwarsa tampil.
+    const now = new Date();
     const { data, error } = await supabaseAdmin
       .from('counseling_slots')
       .select('*')
       .eq('status', 'available')
       .eq('is_published', true)
+      .gt('start_at', now.toISOString())
       .order('start_at', { ascending: true });
     if (error) return [];
-    return (data as CounselingSlot[]) ?? [];
+    return ((data as CounselingSlot[]) ?? []).filter((slot) =>
+      isUpcomingCounselingSlot(slot, now)
+    );
   }
 
   async findSlotById(id: string): Promise<CounselingSlot | null> {
@@ -48,7 +53,8 @@ export class SupabaseCounselingRepository implements ICounselingRepository {
 
     const booking_code = generateBookingCode();
 
-    // Gunakan RPC atomik untuk mencegah double booking (SELECT FOR UPDATE)
+    // Gunakan RPC atomik untuk mencegah double booking (SELECT FOR UPDATE).
+    // Database juga memvalidasi waktu slot tepat sebelum booking dibuat.
     const { data, error } = await supabaseAdmin.rpc('book_counseling_slot', {
       p_slot_id: dto.slot_id,
       p_booking_code: booking_code,
@@ -62,6 +68,9 @@ export class SupabaseCounselingRepository implements ICounselingRepository {
       // Terjemahkan kode error RPC ke pesan yang ramah pengguna
       if (error.message?.includes('SLOT_NOT_FOUND')) {
         throw new Error('Slot konseling tidak ditemukan');
+      }
+      if (error.message?.includes('SLOT_EXPIRED')) {
+        throw new Error('Jadwal konseling telah lewat. Silakan pilih jadwal lain.');
       }
       if (error.message?.includes('SLOT_UNAVAILABLE')) {
         throw new Error('Slot konseling sudah tidak tersedia atau telah dipesan');
