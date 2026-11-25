@@ -154,6 +154,7 @@ export interface CounselingBookingResult {
   session_mode: string;
   start_at: string;
   location: string;
+  meeting_link?: string | null;
   booking_status: string;
   is_simulation: boolean;
 }

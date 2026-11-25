@@ -98,6 +98,8 @@ describe('Public API Endpoints', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.length).toBeGreaterThan(0);
     expect(res.body.data[0].status).toBe('available');
+    // Public schedule must never reveal private online meeting URLs before booking.
+    expect(res.body.data.every((slot: { meeting_link?: string | null }) => slot.meeting_link == null)).toBe(true);
   });
 
   it('POST /api/v1/public/counseling-bookings should book a counseling session', async () => {
@@ -118,5 +120,6 @@ describe('Public API Endpoints', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.booking_code).toMatch(/^BK-\d{4}-[A-Z0-9]{6}$/);
     expect(res.body.data.booking_status).toBe('confirmed');
+    expect(res.body.data).toHaveProperty('meeting_link');
   });
 });

@@ -157,9 +157,22 @@ export const Pendampingan: React.FC = () => {
             </div>
           </div>
 
+          {bookingResult.meeting_link && (
+            <a
+              href={bookingResult.meeting_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white bg-sky-600 hover:bg-sky-700 transition-colors"
+            >
+              <Video className="w-4 h-4" />
+              Buka tautan sesi online
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          )}
+
           <p className="text-xs text-slate-600">
-            Catat kode booking Anda di atas. Petugas Guru BK akan mengonfirmasi jadwal ini secara
-            tertutup.
+            Catat kode booking Anda di atas. Tautan online hanya diberikan setelah booking berhasil.
+            Petugas Guru BK akan mengonfirmasi jadwal ini secara tertutup.
           </p>
 
           <button

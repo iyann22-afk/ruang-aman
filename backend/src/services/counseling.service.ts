@@ -34,6 +34,8 @@ export class CounselingService {
     const adminMap = new Map(admins.map((a) => [a.id, a.full_name]));
     return slots.map((slot) => ({
       ...slot,
+      // Tautan rapat bersifat privat dan baru dikirim setelah booking berhasil.
+      meeting_link: null,
       counselor_name: (slot.counselor_admin_id && adminMap.get(slot.counselor_admin_id)) || 'Guru Bimbingan Konseling',
     }));
   }
@@ -121,6 +123,7 @@ export class CounselingService {
       session_mode: slot.session_mode,
       start_at: slot.start_at,
       location: slot.location || 'Daring (Google Meet)',
+      meeting_link: slot.meeting_link,
       is_simulation: true,
     };
   }

@@ -22,7 +22,7 @@ export class SupabaseCounselingRepository implements ICounselingRepository {
     const now = new Date();
     const { data, error } = await supabaseAdmin
       .from('counseling_slots')
-      .select('*')
+      .select('id,counselor_admin_id,start_at,end_at,session_mode,location,capacity,is_published,status,created_at')
       .eq('status', 'available')
       .eq('is_published', true)
       .gt('start_at', now.toISOString())
