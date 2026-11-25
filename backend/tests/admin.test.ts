@@ -103,4 +103,106 @@ describe('Admin API Endpoints', () => {
     expect(res.body.data.email).toBe('admin@ruangaman.id');
     expect(res.body.data.permissions).toBeDefined();
   });
+ 
+  it('GET /api/v1/admin/counseling-counselors should list active counselors for managers', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/counseling-counselors')
+      .set('Authorization', `Bearer ${authToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'a0000001-0000-0000-0000-000000000002',
+        full_name: 'Budi Santoso, S.Psi., M.Psi.',
+      }),
+    ]));
+    expect(res.body.data[0].email).toBeUndefined();
+  });
+
+  it('GET /api/v1/admin/counseling-slots should return the admin schedule list', async () => {
+    const res = await request(app)
+      .get('/api/v1/admin/counseling-slots')
+      .set('Authorization', `Bearer ${authToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+  });
+
+  it('POST /api/v1/admin/counseling-slots should create a future slot for the selected counselor', async () => {
+    const start = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+    start.setUTCMinutes(0, 0, 0);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const payload = {
+      counselor_admin_id: 'a0000001-0000-0000-0000-000000000002',
+      start_at: start.toISOString(),
+      end_at: end.toISOString(),
+      session_mode: 'offline',
+      location: 'Ruang BK Pengujian',
+    };
+
+    const res = await request(app)
+      .post('/api/v1/admin/counseling-slots')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send(payload);
+
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.counselor_admin_id).toBe(payload.counselor_admin_id);
+    expect(res.body.data.status).toBe('available');
+    expect(res.body.data.is_published).toBe(true);
+  });
+
+  it('POST /api/v1/admin/counseling-slots should reject an overlapping slot', async () => {
+    const start = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
+    start.setUTCMinutes(0, 0, 0);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const res = await request(app)
+      .post('/api/v1/admin/counseling-slots')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        counselor_admin_id: 'a0000001-0000-0000-0000-000000000002',
+        start_at: start.toISOString(),
+        end_at: end.toISOString(),
+        session_mode: 'offline',
+        location: 'Ruang BK Pengujian',
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toContain('bertabrakan');
+  });
+
+  it('POST /api/v1/admin/counseling-slots should force a counselor to schedule only for their own account', async () => {
+    const login = await request(app)
+      .post('/api/v1/admin/auth/login')
+      .send({ email: 'counselor@ruangaman.id', password: 'PasswordDemo123!' });
+    expect(login.status).toBe(200);
+
+    const start = new Date(Date.now() + 70 * 24 * 60 * 60 * 1000);
+    start.setUTCMinutes(0, 0, 0);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const res = await request(app)
+      .post('/api/v1/admin/counseling-slots')
+      .set('Authorization', `Bearer ${login.body.data.token}`)
+      .send({
+        counselor_admin_id: 'a0000001-0000-0000-0000-000000000001',
+        start_at: start.toISOString(),
+        end_at: end.toISOString(),
+        session_mode: 'online',
+        meeting_link: 'https://meet.google.com/ruangaman-test',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.counselor_admin_id).toBe('a0000001-0000-0000-0000-000000000002');
+  });
+
+  it('GET /api/v1/admin/counseling-counselors should reject a counselor role', async () => {
+    const login = await request(app)
+      .post('/api/v1/admin/auth/login')
+      .send({ email: 'counselor@ruangaman.id', password: 'PasswordDemo123!' });
+    const res = await request(app)
+      .get('/api/v1/admin/counseling-counselors')
+      .set('Authorization', `Bearer ${login.body.data.token}`);
+    expect(res.status).toBe(403);
+  });
 });

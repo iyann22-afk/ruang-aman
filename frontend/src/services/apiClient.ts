@@ -1,6 +1,9 @@
 import { supabase } from '../lib/supabase.js';
 import {
   AdminPetugasItem,
+  AdminCounselingSlot,
+  CounselingCounselorOption,
+  CreateAdminCounselingSlotPayload,
   AdminProfile,
   AdminReportDetail,
   AdminReportListItem,
@@ -200,6 +203,24 @@ class ApiClient {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
+    });
+  }
+
+  async getAdminCounselingSlots(): Promise<AdminCounselingSlot[]> {
+    return this.request<AdminCounselingSlot[]>('/admin/counseling-slots');
+  }
+
+  async getCounselingCounselors(): Promise<CounselingCounselorOption[]> {
+    return this.request<CounselingCounselorOption[]>('/admin/counseling-counselors');
+  }
+
+  async createAdminCounselingSlot(
+    payload: CreateAdminCounselingSlotPayload
+  ): Promise<AdminCounselingSlot> {
+    return this.request<AdminCounselingSlot>('/admin/counseling-slots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
   }
 

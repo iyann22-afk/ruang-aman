@@ -128,6 +128,26 @@ export interface CounselingSlot {
   status: string;
 }
 
+export interface AdminCounselingSlot extends CounselingSlot {
+  counselor_admin_id: string;
+  is_published: boolean;
+  created_at: string;
+}
+
+export interface CounselingCounselorOption {
+  id: string;
+  full_name: string;
+}
+
+export interface CreateAdminCounselingSlotPayload {
+  counselor_admin_id?: string;
+  start_at: string;
+  end_at: string;
+  session_mode: 'offline' | 'online';
+  location?: string | null;
+  meeting_link?: string | null;
+}
+
 export interface CounselingBookingResult {
   booking_code: string;
   student_name: string;

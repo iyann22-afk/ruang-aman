@@ -7,6 +7,7 @@ import {
 import { generateBookingCode } from '../../utils/entropy.js';
 import {
   CreateBookingDTO,
+  CreateCounselingSlotDTO,
   ICounselingRepository,
 } from '../interfaces/counseling.repository.interface.js';
 
@@ -144,6 +145,30 @@ export class MockCounselingRepository implements ICounselingRepository {
     return this.slots
       .filter((s) => s.is_published && s.status === 'available')
       .map((s) => ({ ...s }));
+  }
+
+  async listAdminSlots(counselorAdminId?: string): Promise<CounselingSlot[]> {
+    return this.slots
+      .filter((slot) => !counselorAdminId || slot.counselor_admin_id === counselorAdminId)
+      .map((slot) => ({ ...slot }));
+  }
+
+  async createSlot(dto: CreateCounselingSlotDTO): Promise<CounselingSlot> {
+    const slot: CounselingSlot = {
+      id: uuidv4(),
+      counselor_admin_id: dto.counselor_admin_id,
+      start_at: dto.start_at,
+      end_at: dto.end_at,
+      session_mode: dto.session_mode,
+      location: dto.location,
+      meeting_link: dto.meeting_link,
+      capacity: dto.capacity,
+      is_published: true,
+      status: 'available',
+      created_at: new Date().toISOString(),
+    };
+    this.slots.push(slot);
+    return { ...slot };
   }
 
   async findSlotById(id: string): Promise<CounselingSlot | null> {

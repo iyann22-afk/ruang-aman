@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Clock,
+  CalendarDays,
   FileSpreadsheet,
   History,
   LayoutDashboard,
@@ -183,6 +184,7 @@ export const AdminLayout: React.FC = () => {
   // Menu navigasi dinamis berdasarkan role
   const menuItems = [
     { name: 'Dashboard', to: '/admin/dashboard', icon: LayoutDashboard },
+    { name: 'Jadwal Konseling', to: '/admin/jadwal-konseling', icon: CalendarDays },
     { name: 'Daftar Laporan', to: '/admin/laporan', icon: FileSpreadsheet },
     ...(admin?.role !== 'counselor'
       ? [{ name: 'Riwayat Status', to: '/admin/riwayat-status', icon: History }]

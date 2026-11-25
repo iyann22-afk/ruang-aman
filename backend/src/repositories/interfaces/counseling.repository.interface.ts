@@ -12,8 +12,20 @@ export interface CreateBookingDTO {
   privacy_acknowledged: boolean;
 }
 
+export interface CreateCounselingSlotDTO {
+  counselor_admin_id: string;
+  start_at: string;
+  end_at: string;
+  session_mode: 'offline' | 'online';
+  location: string | null;
+  meeting_link: string | null;
+  capacity: number;
+}
+
 export interface ICounselingRepository {
   listSlots(): Promise<CounselingSlot[]>;
+  listAdminSlots(counselorAdminId?: string): Promise<CounselingSlot[]>;
+  createSlot(dto: CreateCounselingSlotDTO): Promise<CounselingSlot>;
   findSlotById(id: string): Promise<CounselingSlot | null>;
   createBooking(dto: CreateBookingDTO): Promise<CounselingBooking>;
   findBookingByCode(code: string): Promise<CounselingBooking | null>;
