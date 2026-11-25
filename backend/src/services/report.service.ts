@@ -273,6 +273,11 @@ export class ReportService {
     return updated;
   }
 
+  async getAssignmentHistories(reportId: string) {
+    const repo = this.getRepository();
+    return repo.getAssignmentHistoriesByReportId(reportId);
+  }
+
   async getAuditTrail(limit?: number) {
     const repo = this.getRepository();
     const histories = await repo.getAllStatusHistories(limit);

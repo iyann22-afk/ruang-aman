@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
   Report,
+  ReportAssignmentHistory,
   ReportCategory,
   ReportEvidence,
   ReportStatus,
@@ -191,14 +192,7 @@ export class MockReportRepository implements IReportRepository {
     },
   ];
 
-  private assignmentHistories: Array<{
-    id: string;
-    report_id: string;
-    assigned_admin_id: string | null;
-    assigned_by_admin_id: string | null;
-    notes: string | null;
-    created_at: string;
-  }> = [];
+  private assignmentHistories: ReportAssignmentHistory[] = [];
 
   async getCategories(): Promise<ReportCategory[]> {
     return this.categories.filter((c) => c.is_active).map((c) => ({ ...c }));
@@ -346,6 +340,12 @@ export class MockReportRepository implements IReportRepository {
     });
 
     return { ...report };
+  }
+
+  async getAssignmentHistoriesByReportId(reportId: string): Promise<ReportAssignmentHistory[]> {
+    return this.assignmentHistories
+      .filter((h) => h.report_id === reportId)
+      .map((h) => ({ ...h }));
   }
 
   async appendStatusHistory(

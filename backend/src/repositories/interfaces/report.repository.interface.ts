@@ -1,5 +1,6 @@
 import {
   Report,
+  ReportAssignmentHistory,
   ReportCategory,
   ReportEvidence,
   ReportStatus,
@@ -45,6 +46,7 @@ export interface IReportRepository {
     assignedByAdminId?: string | null,
     notes?: string | null
   ): Promise<Report | null>;
+  getAssignmentHistoriesByReportId(reportId: string): Promise<ReportAssignmentHistory[]>;
   appendStatusHistory(
     history: Omit<ReportStatusHistory, 'id' | 'created_at'>
   ): Promise<ReportStatusHistory>;

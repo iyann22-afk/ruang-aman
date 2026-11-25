@@ -86,6 +86,15 @@ export interface ReportStatusHistory {
   created_at: string;
 }
 
+export interface ReportAssignmentHistory {
+  id: string;
+  report_id: string;
+  assigned_admin_id: string | null;
+  assigned_by_admin_id: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface EducationMaterial {
   id: string;
   title: string;

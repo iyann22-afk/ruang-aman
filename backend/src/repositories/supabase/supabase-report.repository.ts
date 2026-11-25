@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
   Report,
+  ReportAssignmentHistory,
   ReportCategory,
   ReportEvidence,
   ReportStatus,
@@ -165,37 +166,42 @@ export class SupabaseReportRepository implements IReportRepository {
   ): Promise<Report | null> {
     if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
 
-    const { data, error } = await supabaseAdmin
-      .from('reports')
-      .update({
-        assigned_admin_id: assignedAdminId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .select()
-      .single();
+    // Gunakan RPC atomik agar update penugasan laporan dan audit histori selalu konsisten (ACID).
+    // Jika insert history gagal atau validasi error, update penugasan otomatis rollback.
+    const { data, error } = await supabaseAdmin.rpc('assign_report_with_history', {
+      p_report_id: id,
+      p_assigned_admin_id: assignedAdminId,
+      p_assigned_by_admin_id: assignedByAdminId ?? null,
+      p_notes: notes ?? null,
+    });
 
-    if (error || !data) {
-      if (error?.message?.includes('not found') || error?.code === 'PGRST116') {
+    if (error) {
+      if (error.message?.includes('REPORT_NOT_FOUND')) {
         return null;
       }
-      throw new Error(`Gagal menugaskan laporan: ${error?.message}`);
+      throw new Error(`Gagal menugaskan laporan: ${error.message}`);
     }
 
-    // Catat histori penugasan untuk auditibilitas
-    try {
-      await supabaseAdmin.from('report_assignment_histories').insert({
-        id: uuidv4(),
-        report_id: id,
-        assigned_admin_id: assignedAdminId,
-        assigned_by_admin_id: assignedByAdminId ?? null,
-        notes: notes ?? null,
-      });
-    } catch {
-      // Graceful fallback jika tabel belum selesai dimigrasi di remote
+    if (!data) {
+      return null;
     }
 
     return (data as Report) ?? null;
+  }
+
+  async getAssignmentHistoriesByReportId(reportId: string): Promise<ReportAssignmentHistory[]> {
+    if (!supabaseAdmin) throw new Error('Supabase client tidak tersedia');
+    const { data, error } = await supabaseAdmin
+      .from('report_assignment_histories')
+      .select('*')
+      .eq('report_id', reportId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Gagal mengambil riwayat penugasan: ${error.message}`);
+    }
+
+    return (data as ReportAssignmentHistory[]) ?? [];
   }
 
   async appendStatusHistory(
