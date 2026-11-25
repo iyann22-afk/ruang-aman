@@ -15,8 +15,9 @@ export class SupabaseEducationRepository implements IEducationRepository {
       // Sesuai skema 0001: kolom adalah 'title' dan 'summary' (bukan description)
       query = query.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
     }
-    if (category) {
-      query = query.eq('category', category);
+    const normalizedCategory = category?.trim();
+    if (normalizedCategory && !['semua', 'all'].includes(normalizedCategory.toLowerCase())) {
+      query = query.eq('category', normalizedCategory);
     }
 
     const { data, error } = await query.order('created_at', { ascending: false });

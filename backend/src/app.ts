@@ -11,6 +11,11 @@ import { logger } from './utils/logger.js';
 export const createApp = (): Application => {
   const app = express();
 
+  // Vercel overwrites X-Forwarded-For at ingress; trust only its single proxy hop.
+  if (process.env.VERCEL === '1') {
+    app.set('trust proxy', 1);
+  }
+
   // Security Headers
   app.use(helmet());
 

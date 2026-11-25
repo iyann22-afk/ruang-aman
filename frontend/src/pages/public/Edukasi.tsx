@@ -12,22 +12,41 @@ import {
 import { apiClient } from '../../services/apiClient.js';
 import { EducationMaterial } from '../../types/index.js';
 
+const EDUCATION_CATEGORY_LABELS: Record<string, string> = {
+  'pengenalan-dasar': 'Pengenalan Dasar',
+  'panduan-tindakan': 'Panduan Tindakan',
+  'hak-dan-regulasi': 'Hak dan Regulasi',
+};
+
+const getEducationCategoryLabel = (category: string): string =>
+  EDUCATION_CATEGORY_LABELS[category] ??
+  category.replace(/[-_]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+
 export const Edukasi: React.FC = () => {
   const [materials, setMaterials] = useState<EducationMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Semua');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [educationCategories, setEducationCategories] = useState<string[]>([]);
   const [activeArticle, setActiveArticle] = useState<EducationMaterial | null>(null);
 
   const categories = [
-    'Semua',
-    'Pemahaman Dasar',
-    'Jenis Perundungan',
-    'Dunia Digital',
-    'Kesehatan Mental',
-    'Aksi Nyata',
-    'Panduan Lapor',
+    { value: '', label: 'Semua' },
+    ...educationCategories.map((category) => ({
+      value: category,
+      label: getEducationCategoryLabel(category),
+    })),
   ];
+
+  useEffect(() => {
+    apiClient
+      .getEducationCategories()
+      .then((data) => setEducationCategories(data))
+      .catch((err) => {
+        console.error('Failed to load education categories', err);
+      });
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -78,18 +97,18 @@ export const Edukasi: React.FC = () => {
         {/* Category Filter Pills */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           <Filter className="w-4 h-4 text-slate-400 shrink-0 ml-1" />
-          {categories.map((cat) => (
+          {categories.map((category) => (
             <button
-              key={cat}
+              key={category.value || 'all'}
               type="button"
-              onClick={() => setSelectedCategory(cat)}
+              onClick={() => setSelectedCategory(category.value)}
               className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                selectedCategory === cat
+                selectedCategory === category.value
                   ? 'bg-[#0F9F91] text-white shadow-md shadow-[#0F9F91]/25'
                   : 'bg-white/70 hover:bg-white text-slate-600 border border-slate-200/80'
               }`}
             >
-              {cat}
+              {category.label}
             </button>
           ))}
         </div>

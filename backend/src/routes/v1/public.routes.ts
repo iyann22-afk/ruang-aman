@@ -46,6 +46,10 @@ router.get('/education', (req, res, next) => {
   educationController.getMaterials(req, res, next);
 });
 
+router.get('/education/categories', (req, res, next) => {
+  educationController.getCategories(req, res, next);
+});
+
 router.get('/education/:slug', (req, res, next) => {
   educationController.getMaterialBySlug(req, res, next);
 });

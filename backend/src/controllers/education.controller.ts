@@ -20,6 +20,19 @@ export class EducationController {
     }
   }
 
+  async getCategories(_req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const categories = await educationService.getCategories();
+      res.status(200).json({
+        success: true,
+        message: 'Kategori materi edukasi berhasil dimuat',
+        data: categories,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async getMaterialBySlug(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const slug = Array.isArray(req.params.slug) ? req.params.slug[0] : req.params.slug;

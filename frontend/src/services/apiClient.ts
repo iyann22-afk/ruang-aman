@@ -139,10 +139,17 @@ class ApiClient {
     });
   }
 
+  async getEducationCategories(): Promise<string[]> {
+    return this.request<string[]>('/public/education/categories');
+  }
+
   async getEducationMaterials(search?: string, category?: string): Promise<EducationMaterial[]> {
     const params = new URLSearchParams();
     if (search) params.append('search', search);
-    if (category && category !== 'all') params.append('category', category);
+    const normalizedCategory = category?.trim();
+    if (normalizedCategory && !['all', 'semua'].includes(normalizedCategory.toLowerCase())) {
+      params.append('category', normalizedCategory);
+    }
     const query = params.toString() ? `?${params.toString()}` : '';
     return this.request<EducationMaterial[]>(`/public/education${query}`);
   }

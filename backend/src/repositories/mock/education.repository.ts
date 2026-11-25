@@ -167,7 +167,8 @@ Platform RUANGAMAN dibuat untuk memberikan rasa aman penuh bagi siswa yang ragu 
   async listMaterials(search?: string, category?: string): Promise<EducationMaterial[]> {
     let result = this.materials.filter((m) => m.is_published);
 
-    if (category && category !== 'Semua') {
+    const normalizedCategory = category?.trim();
+    if (normalizedCategory && !['semua', 'all'].includes(normalizedCategory.toLowerCase())) {
       result = result.filter(
         (m) => m.category.toLowerCase() === category.toLowerCase()
       );

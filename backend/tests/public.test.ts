@@ -77,6 +77,21 @@ describe('Public API Endpoints', () => {
     expect(res.body.data[0].slug).toBe('mengenal-definisi-perundungan');
   });
 
+  it('GET /api/v1/public/education/categories should return the available education categories', async () => {
+    const res = await request(app).get('/api/v1/public/education/categories');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeGreaterThan(0);
+  });
+
+  it('GET /api/v1/public/education?category=Semua should return all published materials', async () => {
+    const res = await request(app).get('/api/v1/public/education?category=Semua');
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.length).toBeGreaterThan(0);
+  });
+
   it('GET /api/v1/public/counseling-slots should return available slots', async () => {
     const res = await request(app).get('/api/v1/public/counseling-slots');
     expect(res.status).toBe(200);
